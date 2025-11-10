@@ -1,6 +1,7 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import {
   IsArray,
+  IsDateString,
   IsNotEmpty,
   IsNumber,
   IsString,
@@ -18,10 +19,11 @@ export class CreateSubscriptionPlanDto {
   @Min(0)
   price: number;
 
-  @ApiProperty({ example: '1 month' })
-  @IsString()
+  @ApiProperty({ example: 1, description: 'Duration in months' })
+  @IsNumber()
+  @Min(1)
   @IsNotEmpty()
-  duration: string;
+  duration: number;
 
   @ApiProperty({
     example: ['Feature 1', 'Feature 2', 'Feature 3'],
@@ -47,7 +49,7 @@ export class SubscriptionPlanResponseDto {
   price: number;
 
   @ApiProperty()
-  duration: string;
+  duration: number;
 
   @ApiProperty({ type: [String] })
   features: string[];
@@ -60,8 +62,56 @@ export class SubscriptionPlanResponseDto {
 }
 
 export class SubscribeDto {
-  @ApiProperty({ example: 'subscription-plan-id' })
+  @ApiProperty({ example: 'user-id-uuid' })
+  @IsString()
+  @IsNotEmpty()
+  userId: string;
+
+  @ApiProperty({ example: 'subscription-plan-id-uuid' })
   @IsString()
   @IsNotEmpty()
   subscriptionPlanId: string;
+
+  @ApiProperty({ example: 'TXN123456789' })
+  @IsString()
+  @IsNotEmpty()
+  transactionId: string;
+
+  @ApiProperty({ example: '2025-01-10T10:00:00Z' })
+  @IsDateString()
+  @IsNotEmpty()
+  createdAt: string;
+}
+
+export class SubscriptionResponseDto {
+  @ApiProperty()
+  subscriptionId: string;
+
+  @ApiProperty()
+  userId: string;
+
+  @ApiProperty()
+  subscriptionPlanId: string;
+
+  @ApiProperty()
+  transactionId: string;
+
+  @ApiProperty()
+  startDate: Date;
+
+  @ApiProperty()
+  expiresAt: Date;
+
+  @ApiProperty()
+  isActive: boolean;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  subscriptionPlan: {
+    planName: string;
+    price: number;
+    duration: number;
+  };
 }

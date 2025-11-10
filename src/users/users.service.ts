@@ -19,17 +19,74 @@ export class UsersService {
         fullName: true,
         phone: true,
         profilePictureUrl: true,
+        role: true,
         isDarkMode: true,
         isNotificationsEnabled: true,
         isUsingBiometrics: true,
         createdAt: true,
         updatedAt: true,
-        subscriptionPlan: {
-          select: {
-            subscriptionPlanId: true,
-            planName: true,
-            price: true,
+        subscriptions: {
+          where: {
+            isActive: true,
+            expiresAt: {
+              gte: new Date(),
+            },
           },
+          include: {
+            subscriptionPlan: {
+              select: {
+                subscriptionPlanId: true,
+                planName: true,
+                price: true,
+                duration: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
+        },
+      },
+    });
+  }
+
+  async findAllDeleted() {
+    return this.prisma.user.findMany({
+      where: { isDeleted: true },
+      select: {
+        userId: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        profilePictureUrl: true,
+        role: true,
+        isDarkMode: true,
+        isNotificationsEnabled: true,
+        isUsingBiometrics: true,
+        createdAt: true,
+        updatedAt: true,
+        subscriptions: {
+          where: {
+            isActive: true,
+            expiresAt: {
+              gte: new Date(),
+            },
+          },
+          include: {
+            subscriptionPlan: {
+              select: {
+                subscriptionPlanId: true,
+                planName: true,
+                price: true,
+                duration: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
         },
       },
     });
@@ -44,13 +101,28 @@ export class UsersService {
         fullName: true,
         phone: true,
         profilePictureUrl: true,
+        role: true,
         isDarkMode: true,
         isNotificationsEnabled: true,
         isUsingBiometrics: true,
         isDeleted: true,
         createdAt: true,
         updatedAt: true,
-        subscriptionPlan: true,
+        subscriptions: {
+          where: {
+            isActive: true,
+            expiresAt: {
+              gte: new Date(),
+            },
+          },
+          include: {
+            subscriptionPlan: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
+        },
         paymentMethods: {
           select: {
             paymentId: true,
@@ -66,7 +138,79 @@ export class UsersService {
     if (!user || user.isDeleted) {
       throw new NotFoundException('User not found');
     }
+    
     return user;
+  }
+
+  async updateMe(userId: string, dto: UpdateUserDto) {
+    // Check if user exists and is not deleted
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+    });
+
+    if (!user || user.isDeleted) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Update user profile
+    return this.prisma.user.update({
+      where: { userId },
+      data: dto,
+      select: {
+        userId: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        profilePictureUrl: true,
+        role: true,
+        isDarkMode: true,
+        isNotificationsEnabled: true,
+        isUsingBiometrics: true,
+        createdAt: true,
+        updatedAt: true,
+        subscriptions: {
+          where: {
+            isActive: true,
+            expiresAt: {
+              gte: new Date(),
+            },
+          },
+          include: {
+            subscriptionPlan: {
+              select: {
+                subscriptionPlanId: true,
+                planName: true,
+                price: true,
+                duration: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
+        },
+      },
+    });
+  }
+
+  async removeMe(userId: string) {
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+    });
+
+    if (!user || user.isDeleted) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Soft delete
+    await this.prisma.user.update({
+      where: { userId },
+      data: { isDeleted: true },
+    });
+
+    return { message: 'Your account has been deleted successfully' };
   }
 
   async update(userId: string, requestUserId: string, dto: UpdateUserDto) {
@@ -93,6 +237,7 @@ export class UsersService {
         fullName: true,
         phone: true,
         profilePictureUrl: true,
+        role: true,
         isDarkMode: true,
         isNotificationsEnabled: true,
         isUsingBiometrics: true,
@@ -124,5 +269,46 @@ export class UsersService {
     });
 
     return { message: 'User deleted successfully' };
+  }
+
+  async restore(userId: string) {
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.isDeleted) {
+      throw new ForbiddenException('User is not deleted');
+    }
+
+    // Restore user
+    await this.prisma.user.update({
+      where: { userId },
+      data: { isDeleted: false },
+    });
+
+    return { message: 'User restored successfully' };
+  }
+
+  async permanentDelete(userId: string) {
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Permanently delete user (cascade will delete related data)
+    await this.prisma.user.delete({
+      where: { userId },
+    });
+
+    return { message: 'User permanently deleted' };
   }
 }

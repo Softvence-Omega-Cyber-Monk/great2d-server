@@ -18,17 +18,17 @@ model User {
   password                  String
   phone                     String?
   profilePictureUrl         String?
+  role                      UserRole @default(user)
   isDarkMode                Boolean  @default(false)
-  isNotificationsEnabled    Boolean @default(true)
-  isUsingBiometrics         Boolean @default(false)
+  isNotificationsEnabled    Boolean  @default(true)
+  isUsingBiometrics         Boolean  @default(false)
   isDeleted                 Boolean  @default(false)
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 
   //Relations
   paymentMethods            PaymentMethod[]
-  subscriptionPlanId        String?
-  subscriptionPlan          SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [subscriptionPlanId])
+  subscriptions             Subscription[]
   bills                     Bill[]
 }
 
@@ -51,13 +51,32 @@ model SubscriptionPlan {
   subscriptionPlanId        String   @id @default(uuid())
   planName                  String
   price                     Float
-  duration                  String
+  duration                  Int      // Duration in months
   features                  String[]
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 
   //Relations
-  users                     User[]
+  subscriptions             Subscription[]
+}
+
+model Subscription {
+  subscriptionId            String   @id @default(uuid())
+  userId                    String
+  subscriptionPlanId        String
+  transactionId             String   @unique
+  startDate                 DateTime
+  expiresAt                 DateTime
+  isActive                  Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  //Relations
+  user                      User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  subscriptionPlan          SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [subscriptionPlanId])
+
+  @@index([userId])
+  @@index([subscriptionPlanId])
 }
 
 model Bill {
@@ -74,6 +93,11 @@ model Bill {
   
   //Relations
   user          User          @relation(fields: [userId], references: [userId], onDelete: Cascade)
+}
+
+enum UserRole {
+  user
+  admin
 }
 
 enum BillCategory {

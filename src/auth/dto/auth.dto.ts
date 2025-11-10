@@ -7,16 +7,11 @@ import {
   MinLength,
 } from 'class-validator';
 
-export class SignupDto {
+export class RegisterDto {
   @ApiProperty({ example: 'user@gmail.com' })
   @IsEmail()
   @IsNotEmpty()
   email: string;
-
-  @ApiProperty({ example: 'John Doe' })
-  @IsString()
-  @IsOptional()
-  fullName?: string;
 
   @ApiProperty({ example: '123456' })
   @IsString()
@@ -24,10 +19,10 @@ export class SignupDto {
   @MinLength(6)
   password: string;
 
-  @ApiProperty({ example: '+1234567890', required: false })
+  @ApiProperty({ example: 'John Doe', required: false })
   @IsString()
   @IsOptional()
-  phone?: string;
+  fullName?: string;
 }
 
 export class LoginDto {
@@ -43,12 +38,12 @@ export class LoginDto {
 }
 
 export class ChangePasswordDto {
-  @ApiProperty({ example: '123456' })
+  @ApiProperty({ example: 'OldPassword123!' })
   @IsString()
   @IsNotEmpty()
   oldPassword: string;
 
-  @ApiProperty({ example: '123456789' })
+  @ApiProperty({ example: 'NewPassword123!' })
   @IsString()
   @IsNotEmpty()
   @MinLength(6)
@@ -64,7 +59,6 @@ export class AuthResponseDto {
     userId: string;
     email: string;
     fullName: string | null;
-    phone: string | null;
-    profilePictureUrl: string | null;
+    role: string;
   };
 }

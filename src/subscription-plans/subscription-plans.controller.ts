@@ -14,6 +14,7 @@ import {
   UpdateSubscriptionPlanDto,
   SubscriptionPlanResponseDto,
   SubscribeDto,
+  SubscriptionResponseDto,
 } from './dto/subscription-plan.dto';
 import {
   ApiTags,
@@ -23,7 +24,10 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { JwtGuard } from 'src/auth/guards/jwt.guards';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
+import { UserRole } from 'generated/prisma';
 
 @ApiTags('Subscription Plans')
 @Controller('subscription-plans')
@@ -33,14 +37,16 @@ export class SubscriptionPlansController {
   ) {}
 
   @Post()
-  @UseGuards(JwtGuard)
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.admin)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Create a new subscription plan' })
+  @ApiOperation({ summary: 'Create a new subscription plan (Admin only)' })
   @ApiResponse({
     status: 201,
     description: 'Subscription plan created successfully',
     type: SubscriptionPlanResponseDto,
   })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   create(@Body() createSubscriptionPlanDto: CreateSubscriptionPlanDto) {
     return this.subscriptionPlansService.create(createSubscriptionPlanDto);
   }
@@ -70,9 +76,10 @@ export class SubscriptionPlansController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtGuard)
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.admin)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Update subscription plan' })
+  @ApiOperation({ summary: 'Update subscription plan (Admin only)' })
   @ApiParam({ name: 'id', description: 'Subscription plan ID' })
   @ApiResponse({
     status: 200,
@@ -80,6 +87,7 @@ export class SubscriptionPlansController {
     type: SubscriptionPlanResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Subscription plan not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   update(
     @Param('id') id: string,
     @Body() updateSubscriptionPlanDto: UpdateSubscriptionPlanDto,
@@ -88,15 +96,17 @@ export class SubscriptionPlansController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtGuard)
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.admin)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Delete subscription plan' })
+  @ApiOperation({ summary: 'Delete subscription plan (Admin only)' })
   @ApiParam({ name: 'id', description: 'Subscription plan ID' })
   @ApiResponse({
     status: 200,
     description: 'Subscription plan deleted successfully',
   })
   @ApiResponse({ status: 404, description: 'Subscription plan not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   remove(@Param('id') id: string) {
     return this.subscriptionPlansService.remove(id);
   }
@@ -105,16 +115,16 @@ export class SubscriptionPlansController {
   @UseGuards(JwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Subscribe to a plan' })
-  @ApiResponse({ status: 200, description: 'Subscribed successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Subscribed successfully',
+    type: SubscriptionResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Plan or user not found' })
-  subscribe(
-    @GetUser('userId') userId: string,
-    @Body() subscribeDto: SubscribeDto,
-  ) {
-    return this.subscriptionPlansService.subscribe(
-      userId,
-      subscribeDto.subscriptionPlanId,
-    );
+  @ApiResponse({ status: 400, description: 'User already has active subscription' })
+  @ApiResponse({ status: 409, description: 'Transaction ID already exists' })
+  subscribe(@Body() subscribeDto: SubscribeDto) {
+    return this.subscriptionPlansService.subscribe(subscribeDto);
   }
 
   @Post('unsubscribe')
@@ -123,7 +133,22 @@ export class SubscriptionPlansController {
   @ApiOperation({ summary: 'Unsubscribe from current plan' })
   @ApiResponse({ status: 200, description: 'Unsubscribed successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 400, description: 'No active subscription found' })
   unsubscribe(@GetUser('userId') userId: string) {
     return this.subscriptionPlansService.unsubscribe(userId);
+  }
+
+  @Get('user/:userId')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get user active subscription' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return user subscription',
+    type: SubscriptionResponseDto,
+  })
+  getUserSubscription(@Param('userId') userId: string) {
+    return this.subscriptionPlansService.getUserSubscription(userId);
   }
 }

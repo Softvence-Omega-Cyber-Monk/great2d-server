@@ -25,6 +25,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         fullName: true,
         phone: true,
         profilePictureUrl: true,
+        role: true,
+        isDarkMode: true,
+        isNotificationsEnabled: true,
         isDeleted: true,
       },
     });
