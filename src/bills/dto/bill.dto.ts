@@ -1,5 +1,5 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { IsDateString, IsEnum, IsNotEmpty, IsNumber, IsString } from "class-validator";
+import { ApiProperty, PartialType } from "@nestjs/swagger";
+import { IsDateString, IsEnum, IsNotEmpty, IsNumber, IsString, Min } from "class-validator";
 
 enum BillCategory {
     INTERNET = 'internet',
@@ -51,38 +51,13 @@ export class CreateBillDto {
 
 }
 
-export class UpdateBillDto {
-    @ApiProperty({ example: 'Comcast Internet', required: false })
-    @IsString()
-    billName?: string;
+export class UpdateBillDto extends PartialType(CreateBillDto) {}
 
-    @ApiProperty({ example: BillCategory.INTERNET, enum: BillCategory, required: false })
-    @IsString()
-    @IsEnum(BillCategory)
-    category?: BillCategory;
 
-    @ApiProperty({ example: 'Bill Provider Name', required: false })
-    @IsString()
-    provider?: string;
 
-    @ApiProperty({ example: BillStatus.NEGOTIATING, enum: BillStatus, required: false })
-    @IsString()
-    @IsEnum(BillStatus)
-    status?: BillStatus;
-
-    @ApiProperty({ example: 99 })
-    @IsNumber()
-    @IsNotEmpty()
-    previousRate: number;
-
-    @ApiProperty({ example: 89 })
-    @IsNumber()
-    @IsNotEmpty()
-    newRate: number;
-    
-    @ApiProperty()
-    createdAt?: Date;
-
-    @ApiProperty()
-    updatedAt?: Date;
-}   
+export class SetSavingsGoalDto {
+  @ApiProperty({ example: 500.00, description: 'Monthly savings goal amount' })
+  @IsNumber()
+  @Min(0)
+  goalAmount: number;
+}

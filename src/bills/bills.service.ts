@@ -4,7 +4,7 @@ import {
   ForbiddenException 
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateBillDto, UpdateBillDto } from './dto/bill.dto';
+import { CreateBillDto, UpdateBillDto, SetSavingsGoalDto } from './dto/bill.dto';
 
 @Injectable()
 export class BillService {
@@ -105,6 +105,43 @@ export class BillService {
     return { message: `Bill with ID ${id} deleted successfully` };
   }
 
+  async setSavingsGoal(userId: string, dto: SetSavingsGoalDto) {
+    // Verify user exists
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+    });
+
+    if (!user || user.isDeleted) {
+      throw new ForbiddenException('User not found or deleted');
+    }
+
+    // Update user's monthly savings goal
+    const updatedUser = await this.prisma.user.update({
+      where: { userId },
+      data: { monthlySavingsGoal: dto.goalAmount },
+    });
+
+    return {
+      message: 'Monthly savings goal set successfully',
+      goalAmount: updatedUser.monthlySavingsGoal,
+    };
+  }
+
+  async getSavingsGoal(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+      select: { monthlySavingsGoal: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      goalAmount: user.monthlySavingsGoal ?? 0,
+    };
+  }
+
   private calculateSavings(previousRate: number, newRate: number): number {
     if (previousRate === 0) return 0;
     return ((previousRate - newRate) / previousRate) * 100;
@@ -113,6 +150,12 @@ export class BillService {
   async getThisMonthSavings(userId: string) {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Get user's savings goal
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+      select: { monthlySavingsGoal: true },
+    });
 
     const bills = await this.prisma.bill.findMany({
       where: {
@@ -132,6 +175,7 @@ export class BillService {
 
     const savings = totalPrev - totalNew;
     const percent = totalPrev ? ((savings / totalPrev) * 100).toFixed(2) : '0';
+    const totalGoal = user?.monthlySavingsGoal ?? 0;
 
     return {
       month: now.toLocaleString('default', { month: 'long' }),
@@ -140,6 +184,8 @@ export class BillService {
       totalNew: totalNew,
       totalSavings: savings,
       percentSaved: `${percent}%`,
+      totalGoal: totalGoal,
+      goalProgress: totalGoal > 0 ? ((savings / totalGoal) * 100).toFixed(2) + '%' : '0%',
     };
   }
 
@@ -189,6 +235,12 @@ export class BillService {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+    // Get user's savings goal
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+      select: { monthlySavingsGoal: true },
+    });
+
     const bills = await this.prisma.bill.findMany({
       where: { 
         userId,
@@ -197,12 +249,17 @@ export class BillService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return bills.map(b => ({
+    const billsData = bills.map(b => ({
       billName: b.billName,
       provider: b.provider,
       newRate: `$${b.newRate}`,
       percentSaved: `${this.calculateSavings(b.previousRate, b.newRate).toFixed(0)}% saved`,
       category: b.category,
     }));
+
+    return {
+      bills: billsData,
+      totalGoal: user?.monthlySavingsGoal ?? 0,
+    };
   }
 }

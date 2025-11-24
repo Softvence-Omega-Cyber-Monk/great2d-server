@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { BillService } from './bills.service';
-import { CreateBillDto, UpdateBillDto } from './dto/bill.dto';
+import { CreateBillDto, UpdateBillDto, SetSavingsGoalDto } from './dto/bill.dto';
 import { 
   ApiTags, 
   ApiOperation, 
@@ -86,6 +86,25 @@ export class BillController {
     @GetUser('userId') userId: string,
   ) {
     return this.billService.deleteBill(userId, id);
+  }
+
+  @Post('goals/monthly')
+  @ApiOperation({ summary: 'Set monthly savings goal' })
+  @ApiResponse({ status: 200, description: 'Savings goal set successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  setSavingsGoal(
+    @Body() dto: SetSavingsGoalDto,
+    @GetUser('userId') userId: string,
+  ) {
+    return this.billService.setSavingsGoal(userId, dto);
+  }
+
+  @Get('goals/monthly')
+  @ApiOperation({ summary: 'Get current monthly savings goal' })
+  @ApiResponse({ status: 200, description: 'Current savings goal' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getSavingsGoal(@GetUser('userId') userId: string) {
+    return this.billService.getSavingsGoal(userId);
   }
 
   @Get('stats/monthly')
