@@ -3,9 +3,11 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from 'src/mail/mail.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -13,6 +15,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private mailService: MailService,
   ) {}
 
   async register(email: string, password: string, fullName?: string) {
@@ -184,6 +187,104 @@ export class AuthService {
     });
 
     return { message: 'Password changed successfully' };
+  }
+
+  async forgotPassword(email: string) {
+    // Find user
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        userId: true,
+        email: true,
+        fullName: true,
+        isDeleted: true,
+      },
+    });
+
+    if (!user || user.isDeleted) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Generate 5-digit code
+    const code = Math.floor(10000 + Math.random() * 90000).toString();
+
+    // Set expiration time (15 minutes from now)
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+
+    // Delete any existing reset codes for this user
+    await this.prisma.passwordReset.deleteMany({
+      where: { userId: user.userId },
+    });
+
+    // Store the reset code
+    await this.prisma.passwordReset.create({
+      data: {
+        userId: user.userId,
+        code,
+        expiresAt,
+      },
+    });
+
+    // Send email with reset code
+    await this.mailService.sendPasswordResetEmail(
+      user.email,
+      user.fullName || 'User',
+      code,
+    );
+
+    return {
+      message: 'Password reset code has been sent to your email',
+    };
+  }
+
+  async resetPassword(email: string, code: string, newPassword: string) {
+    // Find user
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        userId: true,
+        email: true,
+        isDeleted: true,
+      },
+    });
+
+    if (!user || user.isDeleted) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Find valid reset code
+    const passwordReset = await this.prisma.passwordReset.findFirst({
+      where: {
+        userId: user.userId,
+        code,
+        expiresAt: {
+          gte: new Date(),
+        },
+        usedAt: null,
+      },
+    });
+
+    if (!passwordReset) {
+      throw new BadRequestException('Invalid or expired reset code');
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await this.prisma.user.update({
+      where: { userId: user.userId },
+      data: { password: hashedPassword },
+    });
+
+    // Mark reset code as used
+    await this.prisma.passwordReset.update({
+      where: { resetId: passwordReset.resetId },
+      data: { usedAt: new Date() },
+    });
+
+    return { message: 'Password has been reset successfully' };
   }
 
   async getProfile(userId: string) {

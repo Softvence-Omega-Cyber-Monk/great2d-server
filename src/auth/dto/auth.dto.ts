@@ -5,6 +5,8 @@ import {
   IsOptional,
   IsString,
   MinLength,
+  Length,
+  Matches,
 } from 'class-validator';
 
 export class RegisterDto {
@@ -42,6 +44,33 @@ export class ChangePasswordDto {
   @IsString()
   @IsNotEmpty()
   oldPassword: string;
+
+  @ApiProperty({ example: 'NewPassword123!' })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(6)
+  newPassword: string;
+}
+
+export class ForgotPasswordDto {
+  @ApiProperty({ example: 'user@gmail.com' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+}
+
+export class ResetPasswordDto {
+  @ApiProperty({ example: 'user@gmail.com' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @ApiProperty({ example: '12345' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(5, 5)
+  @Matches(/^\d{5}$/, { message: 'Code must be exactly 5 digits' })
+  code: string;
 
   @ApiProperty({ example: 'NewPassword123!' })
   @IsString()

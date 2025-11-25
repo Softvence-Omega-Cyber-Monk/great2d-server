@@ -15,7 +15,13 @@ import {
 } from '@nestjs/swagger';
 import { JwtGuard } from './guards/jwt.guards';
 import { GetUser } from './decorators/get-user.decorator';
-import { RegisterDto, LoginDto, ChangePasswordDto } from './dto/auth.dto';
+import {
+  RegisterDto,
+  LoginDto,
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+} from './dto/auth.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -79,6 +85,33 @@ export class AuthController {
       userId,
       changePasswordDto.oldPassword,
       changePasswordDto.newPassword,
+    );
+  }
+
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Request password reset code' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset code sent to email',
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(forgotPasswordDto.email);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Reset password with code' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid or expired code' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return this.authService.resetPassword(
+      resetPasswordDto.email,
+      resetPasswordDto.code,
+      resetPasswordDto.newPassword,
     );
   }
 }

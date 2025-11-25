@@ -27,6 +27,7 @@ model User {
   updatedAt                 DateTime @updatedAt
 
   monthlySavingsGoal        Float?    @default(0)
+  passwordResets            PasswordReset[]
 
   //Relations
   paymentMethods            PaymentMethod[]
@@ -95,6 +96,21 @@ model Bill {
   
   //Relations
   user          User          @relation(fields: [userId], references: [userId], onDelete: Cascade)
+}
+
+model PasswordReset {
+  resetId   String   @id @default(uuid())
+  userId    String
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([code])
+  @@map("password_resets")
 }
 
 enum UserRole {
