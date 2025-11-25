@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
-import { MailService } from 'src/mail/mail.service';
+import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -235,6 +235,44 @@ export class AuthService {
 
     return {
       message: 'Password reset code has been sent to your email',
+    };
+  }
+
+  async verifyOtp(email: string, code: string) {
+    // Find user
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        userId: true,
+        email: true,
+        isDeleted: true,
+      },
+    });
+
+    if (!user || user.isDeleted) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Find valid reset code
+    const passwordReset = await this.prisma.passwordReset.findFirst({
+      where: {
+        userId: user.userId,
+        code,
+        expiresAt: {
+          gte: new Date(),
+        },
+        usedAt: null,
+      },
+    });
+
+    if (!passwordReset) {
+      throw new BadRequestException('Invalid or expired OTP code');
+    }
+
+    // Mark code as verified (optional: you can add a verifiedAt field)
+    return {
+      message: 'OTP verified successfully',
+      verified: true,
     };
   }
 

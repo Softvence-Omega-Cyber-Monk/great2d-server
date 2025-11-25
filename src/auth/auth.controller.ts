@@ -20,6 +20,7 @@ import {
   LoginDto,
   ChangePasswordDto,
   ForgotPasswordDto,
+  VerifyOtpDto,
   ResetPasswordDto,
 } from './dto/auth.dto';
 
@@ -99,8 +100,20 @@ export class AuthController {
     return this.authService.forgotPassword(forgotPasswordDto.email);
   }
 
+  @Post('verify-otp')
+  @ApiOperation({ summary: 'Verify OTP code' })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP verified successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid or expired OTP code' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+    return this.authService.verifyOtp(verifyOtpDto.email, verifyOtpDto.code);
+  }
+
   @Post('reset-password')
-  @ApiOperation({ summary: 'Reset password with code' })
+  @ApiOperation({ summary: 'Reset password with verified code' })
   @ApiResponse({
     status: 200,
     description: 'Password reset successfully',

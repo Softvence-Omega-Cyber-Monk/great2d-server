@@ -59,6 +59,20 @@ export class ForgotPasswordDto {
   email: string;
 }
 
+export class VerifyOtpDto {
+  @ApiProperty({ example: 'user@gmail.com' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @ApiProperty({ example: '12345' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(5, 5)
+  @Matches(/^\d{5}$/, { message: 'Code must be exactly 5 digits' })
+  code: string;
+}
+
 export class ResetPasswordDto {
   @ApiProperty({ example: 'user@gmail.com' })
   @IsEmail()
