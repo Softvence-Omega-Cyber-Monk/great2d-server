@@ -46,7 +46,6 @@ export class CreateBillDto {
 
     @ApiProperty({ example: 89 })
     @IsNumber()
-    @IsNotEmpty()
     newRate: number;
 
 }

@@ -21,8 +21,10 @@ import {
   ChangePasswordDto,
   ForgotPasswordDto,
   VerifyOtpDto,
-  ResetPasswordDto,
+  ResetPasswordDto
 } from './dto/auth.dto';
+
+import { SocialLoginDto, SocialAuthResponseDto } from './dto/social-login.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -53,6 +55,27 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto.email, loginDto.password);
+  }
+
+  @Post('social-login')
+  @ApiOperation({ 
+    summary: 'Login or register via social provider',
+    description: 'Handles both first-time social login (creates account) and returning users. Returns access token, refresh token, and user info.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User authenticated successfully via social login',
+    type: SocialAuthResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Account has been deleted' })
+  async socialLogin(@Body() socialLoginDto: SocialLoginDto) {
+    return this.authService.socialLogin(
+      socialLoginDto.email,
+      socialLoginDto.fullName,
+      socialLoginDto.provider,
+      socialLoginDto.providerId,
+      socialLoginDto.profilePictureUrl,
+    );
   }
 
   @Get('profile')
