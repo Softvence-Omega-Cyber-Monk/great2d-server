@@ -1,15 +1,153 @@
 import { 
   Injectable, 
   NotFoundException, 
-  ForbiddenException 
+  ForbiddenException,
+  ConflictException 
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateBillDto, UpdateBillDto, SetSavingsGoalDto } from './dto/bill.dto';
+import { 
+  CreateBillDto, 
+  UpdateBillDto, 
+  SetSavingsGoalDto, 
+  CreateProviderDto, 
+  UpdateProviderDto 
+} from './dto/bill.dto';
 
 @Injectable()
 export class BillService {
   constructor(private prisma: PrismaService) {}
 
+  // ==================== PROVIDER METHODS ====================
+  // Note: Providers are global, not user-specific
+  
+  async createProvider(dto: CreateProviderDto) {
+    // Check if provider already exists
+    const existing = await this.prisma.provider.findFirst({
+      where: { 
+        providerName: {
+          equals: dto.providerName,
+          mode: 'insensitive' // Case-insensitive check
+        }
+      }
+    });
+
+    if (existing) {
+      throw new ConflictException('Provider with this name already exists');
+    }
+
+    return this.prisma.provider.create({
+      data: {
+        providerName: dto.providerName,
+        contactEmail: dto.contactEmail,
+        contactPhone: dto.contactPhone,
+      },
+    });
+  }
+
+  async getAllProviders() {
+    return this.prisma.provider.findMany({
+      orderBy: { providerName: 'asc' },
+      include: {
+        _count: {
+          select: { bills: true }
+        }
+      }
+    });
+  }
+
+  async searchProviders(query: string) {
+    return this.prisma.provider.findMany({
+      where: {
+        providerName: {
+          contains: query,
+          mode: 'insensitive'
+        }
+      },
+      orderBy: { providerName: 'asc' },
+      take: 10
+    });
+  }
+
+  async getProviderById(providerId: string) {
+    const provider = await this.prisma.provider.findUnique({
+      where: { providerId },
+      include: {
+        _count: {
+          select: { bills: true }
+        }
+      }
+    });
+
+    if (!provider) {
+      throw new NotFoundException(`Provider with ID ${providerId} not found`);
+    }
+
+    return provider;
+  }
+
+  async updateProvider(providerId: string, dto: UpdateProviderDto) {
+    const provider = await this.prisma.provider.findUnique({ 
+      where: { providerId } 
+    });
+
+    if (!provider) {
+      throw new NotFoundException(`Provider with ID ${providerId} not found`);
+    }
+
+    // Check for name conflict if name is being updated
+    if (dto.providerName && dto.providerName !== provider.providerName) {
+      const existing = await this.prisma.provider.findFirst({
+        where: { 
+          providerName: {
+            equals: dto.providerName,
+            mode: 'insensitive'
+          },
+          providerId: {
+            not: providerId
+          }
+        }
+      });
+
+      if (existing) {
+        throw new ConflictException('Provider with this name already exists');
+      }
+    }
+
+    return this.prisma.provider.update({
+      where: { providerId },
+      data: {
+        providerName: dto.providerName ?? provider.providerName,
+        contactEmail: dto.contactEmail ?? provider.contactEmail,
+        contactPhone: dto.contactPhone ?? provider.contactPhone,
+      },
+    });
+  }
+
+  async deleteProvider(providerId: string) {
+    const provider = await this.prisma.provider.findUnique({ 
+      where: { providerId },
+      include: {
+        _count: {
+          select: { bills: true }
+        }
+      }
+    });
+
+    if (!provider) {
+      throw new NotFoundException(`Provider with ID ${providerId} not found`);
+    }
+
+    // Check if provider has associated bills
+    if (provider._count.bills > 0) {
+      throw new ForbiddenException('Cannot delete provider with existing bills');
+    }
+
+    await this.prisma.provider.delete({ where: { providerId } });
+    return { message: `Provider "${provider.providerName}" deleted successfully` };
+  }
+
+  // ==================== BILL METHODS ====================
+  
   async createBill(userId: string, dto: CreateBillDto) {
     // Verify user exists
     const user = await this.prisma.user.findUnique({
@@ -20,17 +158,30 @@ export class BillService {
       throw new ForbiddenException('User not found or deleted');
     }
 
+    // Verify provider exists
+    const provider = await this.prisma.provider.findUnique({
+      where: { providerId: dto.providerId },
+    });
+
+    if (!provider) {
+      throw new NotFoundException('Provider not found');
+    }
+
     const bill = await this.prisma.bill.create({
       data: {
-        billName: dto.billName,
-        category: dto.category,
-        provider: dto.provider,
-        status: dto.status,
-        previousRate: dto.previousRate,
-        newRate: dto.newRate,
-        userId: userId,
+        userId,
+        providerId: dto.providerId,
+        accountDetails: dto.accountDetails,
+        negotiationRecommendation: dto.negotiationRecommendation,
+        emailSubject: dto.emailSubject,
+        emailBody: dto.emailBody,
+        status: dto.status || 'draft',
       },
+      include: {
+        provider: true
+      }
     });
+    
     return bill;
   }
 
@@ -38,19 +189,44 @@ export class BillService {
     return this.prisma.bill.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
+      include: {
+        provider: true,
+        _count: {
+          select: { billTrackings: true }
+        }
+      }
+    });
+  }
+
+  async getBillsByStatus(userId: string, status: string) {
+    return this.prisma.bill.findMany({
+      where: { 
+        userId,
+        status: status as any
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        provider: true
+      }
     });
   }
 
   async getBillById(userId: string, id: string) {
     const bill = await this.prisma.bill.findUnique({
       where: { id },
+      include: {
+        provider: true,
+        billTrackings: {
+          orderBy: { month: 'desc' },
+          take: 12 // Last 12 months
+        }
+      }
     });
 
     if (!bill) {
       throw new NotFoundException(`Bill with ID ${id} not found`);
     }
 
-    // Ensure the bill belongs to the requesting user
     if (bill.userId !== userId) {
       throw new ForbiddenException('You do not have access to this bill');
     }
@@ -59,54 +235,119 @@ export class BillService {
   }
 
   async updateBill(userId: string, id: string, dto: UpdateBillDto) {
-    const billExists = await this.prisma.bill.findUnique({ 
+    const bill = await this.prisma.bill.findUnique({ 
       where: { id } 
     });
 
-    if (!billExists) {
+    if (!bill) {
       throw new NotFoundException(`Bill with ID ${id} not found`);
     }
 
-    // Ensure the bill belongs to the requesting user
-    if (billExists.userId !== userId) {
+    if (bill.userId !== userId) {
       throw new ForbiddenException('You do not have access to this bill');
+    }
+
+    // If providerId is being updated, verify it exists
+    if (dto.providerId) {
+      const provider = await this.prisma.provider.findUnique({
+        where: { providerId: dto.providerId },
+      });
+
+      if (!provider) {
+        throw new NotFoundException('Provider not found');
+      }
     }
 
     const updatedBill = await this.prisma.bill.update({
       where: { id },
       data: {
-        billName: dto.billName ?? billExists.billName,
-        category: dto.category ?? billExists.category,
-        provider: dto.provider ?? billExists.provider,
-        status: dto.status ?? billExists.status,
-        previousRate: dto.previousRate ?? billExists.previousRate,
-        newRate: dto.newRate ?? billExists.newRate,
+        providerId: dto.providerId ?? bill.providerId,
+        accountDetails: dto.accountDetails ?? bill.accountDetails,
+        negotiationRecommendation: dto.negotiationRecommendation ?? bill.negotiationRecommendation,
+        emailSubject: dto.emailSubject ?? bill.emailSubject,
+        emailBody: dto.emailBody ?? bill.emailBody,
+        emailThreadId: dto.emailThreadId ?? bill.emailThreadId,
+        emailMessageId: dto.emailMessageId ?? bill.emailMessageId,
+        status: dto.status ?? bill.status,
+        sentAt: dto.sentAt ?? bill.sentAt,
       },
+      include: {
+        provider: true
+      }
     });
 
     return updatedBill;
   }
 
   async deleteBill(userId: string, id: string) {
-    const billExists = await this.prisma.bill.findUnique({ 
+    const bill = await this.prisma.bill.findUnique({ 
       where: { id } 
     });
 
-    if (!billExists) {
+    if (!bill) {
       throw new NotFoundException(`Bill with ID ${id} not found`);
     }
 
-    // Ensure the bill belongs to the requesting user
-    if (billExists.userId !== userId) {
+    if (bill.userId !== userId) {
       throw new ForbiddenException('You do not have access to this bill');
     }
 
     await this.prisma.bill.delete({ where: { id } });
-    return { message: `Bill with ID ${id} deleted successfully` };
+    return { message: `Bill deleted successfully` };
   }
 
+  async markBillAsSent(userId: string, id: string, emailThreadId?: string, emailMessageId?: string) {
+    const bill = await this.prisma.bill.findUnique({ 
+      where: { id } 
+    });
+
+    if (!bill) {
+      throw new NotFoundException(`Bill with ID ${id} not found`);
+    }
+
+    if (bill.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this bill');
+    }
+
+    return this.prisma.bill.update({
+      where: { id },
+      data: {
+        status: 'sent',
+        sentAt: new Date(),
+        emailThreadId,
+        emailMessageId,
+      },
+      include: {
+        provider: true
+      }
+    });
+  }
+
+  async updateBillStatus(userId: string, id: string, status: string) {
+    const bill = await this.prisma.bill.findUnique({ 
+      where: { id } 
+    });
+
+    if (!bill) {
+      throw new NotFoundException(`Bill with ID ${id} not found`);
+    }
+
+    if (bill.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this bill');
+    }
+
+    return this.prisma.bill.update({
+      where: { id },
+      data: { status: status as any },
+      include: {
+        provider: true
+      }
+    });
+  }
+
+  // ==================== SAVINGS GOALS & STATS ====================
+  
   async setSavingsGoal(userId: string, dto: SetSavingsGoalDto) {
-    // Verify user exists
     const user = await this.prisma.user.findUnique({
       where: { userId },
     });
@@ -115,7 +356,6 @@ export class BillService {
       throw new ForbiddenException('User not found or deleted');
     }
 
-    // Update user's monthly savings goal
     const updatedUser = await this.prisma.user.update({
       where: { userId },
       data: { monthlySavingsGoal: dto.goalAmount },
@@ -142,124 +382,68 @@ export class BillService {
     };
   }
 
-  private calculateSavings(previousRate: number, newRate: number): number {
-    if (previousRate === 0) return 0;
-    return ((previousRate - newRate) / previousRate) * 100;
-  }
-
-  async getThisMonthSavings(userId: string) {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    // Get user's savings goal
-    const user = await this.prisma.user.findUnique({
-      where: { userId },
-      select: { monthlySavingsGoal: true },
-    });
-
+  async getBillsStats(userId: string) {
     const bills = await this.prisma.bill.findMany({
-      where: {
-        userId,
-        createdAt: {
-          gte: startOfMonth,
-        },
-      },
+      where: { userId },
+      include: {
+        provider: true
+      }
     });
 
-    let totalPrev = 0;
-    let totalNew = 0;
-    bills.forEach(b => {
-      totalPrev += b.previousRate;
-      totalNew += b.newRate!;
-    });
-
-    const savings = totalPrev - totalNew;
-    const percent = totalPrev ? ((savings / totalPrev) * 100).toFixed(2) : '0';
-    const totalGoal = user?.monthlySavingsGoal ?? 0;
-
-    return {
-      month: now.toLocaleString('default', { month: 'long' }),
-      totalBills: bills.length,
-      totalPrevious: totalPrev,
-      totalNew: totalNew,
-      totalSavings: savings,
-      percentSaved: `${percent}%`,
-      totalGoal: totalGoal,
-      goalProgress: totalGoal > 0 ? ((savings / totalGoal) * 100).toFixed(2) + '%' : '0%',
+    const stats = {
+      total: bills.length,
+      byStatus: {
+        draft: bills.filter(b => b.status === 'draft').length,
+        sent: bills.filter(b => b.status === 'sent').length,
+        negotiating: bills.filter(b => b.status === 'negotiating').length,
+        successful: bills.filter(b => b.status === 'successful').length,
+        failed: bills.filter(b => b.status === 'failed').length,
+        cancelled: bills.filter(b => b.status === 'cancelled').length,
+      }
     };
+
+    return stats;
   }
 
-  async getAllTimeSavings(userId: string) {
-    const result = await this.prisma.bill.aggregate({
+  async getRecentActivity(userId: string, limit: number = 10) {
+    return this.prisma.bill.findMany({
       where: { userId },
-      _sum: { previousRate: true, newRate: true },
+      orderBy: { updatedAt: 'desc' },
+      take: limit,
+      include: {
+        provider: true
+      }
     });
+  }
 
-    const prev = result._sum.previousRate ?? 0;
-    const next = result._sum.newRate ?? 0;
-    const saved = prev - next;
-    const percent = prev ? ((saved / prev) * 100).toFixed(2) : '0';
+  async getDashboardSummary(userId: string) {
+    const [
+      totalBills,
+      draftBills,
+      sentBills,
+      negotiatingBills,
+      successfulBills,
+      recentActivity
+    ] = await Promise.all([
+      this.prisma.bill.count({ where: { userId } }),
+      this.prisma.bill.count({ where: { userId, status: 'draft' } }),
+      this.prisma.bill.count({ where: { userId, status: 'sent' } }),
+      this.prisma.bill.count({ where: { userId, status: 'negotiating' } }),
+      this.prisma.bill.count({ where: { userId, status: 'successful' } }),
+      this.prisma.bill.findMany({
+        where: { userId },
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+        include: { provider: true }
+      })
+    ]);
 
     return {
-      totalPrevious: prev,
-      totalNew: next,
-      totalSavings: saved,
-      percentSaved: `${percent}%`,
-    };
-  }
-
-  async getSavingsByCategory(userId: string) {
-    const grouped = await this.prisma.bill.groupBy({
-      by: ['category'],
-      where: { userId },
-      _sum: { previousRate: true, newRate: true },
-    });
-
-    return grouped.map(g => {
-      const prev = g._sum.previousRate ?? 0;
-      const next = g._sum.newRate ?? 0;
-      const saved = prev - next;
-      const percent = prev ? ((saved / prev) * 100).toFixed(2) : '0';
-
-      return {
-        category: g.category,
-        totalPrevious: prev,
-        totalNew: next,
-        totalSavings: saved,
-        percentSaved: `${percent}%`,
-      };
-    });
-  }
-
-  async getMonthlyBreakdown(userId: string) {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    // Get user's savings goal
-    const user = await this.prisma.user.findUnique({
-      where: { userId },
-      select: { monthlySavingsGoal: true },
-    });
-
-    const bills = await this.prisma.bill.findMany({
-      where: { 
-        userId,
-        createdAt: { gte: startOfMonth } 
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const billsData = bills.map(b => ({
-      billName: b.billName,
-      provider: b.provider,
-      newRate: `$${b.newRate}`,
-      percentSaved: `${this.calculateSavings(b.previousRate, b.newRate!).toFixed(0)}% saved`,
-      category: b.category,
-    }));
-
-    return {
-      bills: billsData,
-      totalGoal: user?.monthlySavingsGoal ?? 0,
+      totalBills,
+      activeBills: sentBills + negotiatingBills,
+      draftBills,
+      successfulBills,
+      recentActivity
     };
   }
 }

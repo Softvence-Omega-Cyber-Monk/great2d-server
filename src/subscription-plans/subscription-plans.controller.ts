@@ -37,8 +37,7 @@ export class SubscriptionPlansController {
   ) {}
 
   @Post()
-  @UseGuards(JwtGuard, RolesGuard)
-  @Roles(UserRole.admin)
+  @UseGuards(JwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Create a new subscription plan (Admin only)' })
   @ApiResponse({

@@ -37,6 +37,45 @@ model User {
   paypalPayments            PayPalPayment[]
 }
 
+// New Provider model
+model Provider {
+  providerId                String   @id @default(uuid())
+  providerName              String
+  contactEmail              String?
+  contactPhone              String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  bills                     Bill[]
+
+  @@map("providers")
+}
+
+model Bill {
+  id                        String        @id @default(uuid())
+  userId                    String
+  providerId                String
+  accountDetails            String?       // Account number or other identifying details
+  negotiationRecommendation String?       // AI-generated recommendation
+  emailSubject              String?
+  emailBody                 String?       @db.Text
+  emailThreadId             String?       // Gmail thread ID
+  emailMessageId            String?       // Gmail message ID
+  status                    BillStatus
+  sentAt                    DateTime?     // When negotiation email was sent
+  createdAt                 DateTime      @default(now())
+  updatedAt                 DateTime      @updatedAt
+  
+  //Relations
+  user                      User          @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  provider                  Provider      @relation(fields: [providerId], references: [providerId], onDelete: Cascade)
+  billTrackings             BillTracking[]
+
+  @@index([userId])
+  @@index([providerId])
+  @@index([status])
+  @@map("bills")
+}
+
 model PaymentMethod {
   paymentId                 String   @id @default(uuid())
   userId                    String
@@ -54,6 +93,7 @@ model PaymentMethod {
 
 model SubscriptionPlan {
   subscriptionPlanId        String   @id @default(uuid())
+  description               String
   planName                  String
   price                     Float
   duration                  Int      // Duration in months
@@ -83,23 +123,6 @@ model Subscription {
 
   @@index([userId])
   @@index([subscriptionPlanId])
-}
-
-model Bill {
-  id                        String        @id @default(uuid())
-  billName                  String
-  category                  BillCategory
-  provider                  String
-  status                    BillStatus
-  previousRate              Float
-  newRate                   Float?
-  userId                    String
-  createdAt                 DateTime      @default(now())
-  updatedAt                 DateTime      @updatedAt
-  
-  //Relations
-  user          User          @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  billTrackings             BillTracking[]
 }
 
 model PasswordReset {
@@ -210,7 +233,10 @@ enum BillCategory {
 }
 
 enum BillStatus {
-  successfull
-  negotiating
-  failed
+  draft          // Email not sent yet
+  sent           // Email sent, awaiting response
+  negotiating    // In active negotiation
+  successful     // Successfully negotiated
+  failed         // Negotiation failed
+  cancelled      // User cancelled
 }

@@ -15,6 +15,11 @@ export class CreateSubscriptionPlanDto {
   @IsNotEmpty()
   planName: string;
 
+  @ApiProperty({example: 'Aree hridoy bhai apni kemon achen? valo to?'})
+  @IsString()
+  @IsNotEmpty()
+  description: string;
+
   @ApiProperty({ example: 9.99 })
   @IsNumber()
   @Min(0)
@@ -45,6 +50,9 @@ export class SubscriptionPlanResponseDto {
 
   @ApiProperty()
   planName: string;
+
+  @ApiProperty()
+  description: string
 
   @ApiProperty()
   price: number;
