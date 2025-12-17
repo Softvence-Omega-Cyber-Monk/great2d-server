@@ -116,15 +116,18 @@ export class SubscriptionPlansController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Subscribe to a plan' })
   @ApiResponse({
-    status: 200,
+    status: 201,
     description: 'Subscribed successfully',
     type: SubscriptionResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Plan or user not found' })
   @ApiResponse({ status: 400, description: 'User already has active subscription' })
   @ApiResponse({ status: 409, description: 'Transaction ID already exists' })
-  subscribe(@Body() subscribeDto: SubscribeDto) {
-    return this.subscriptionPlansService.subscribe(subscribeDto);
+  subscribe(
+    @GetUser('userId') userId: string,
+    @Body() subscribeDto: SubscribeDto,
+  ) {
+    return this.subscriptionPlansService.subscribe(userId, subscribeDto);
   }
 
   @Post('unsubscribe')
@@ -138,17 +141,46 @@ export class SubscriptionPlansController {
     return this.subscriptionPlansService.unsubscribe(userId);
   }
 
-  @Get('user/:userId')
+  @Get('user/me')
   @UseGuards(JwtGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Get user active subscription' })
+  @ApiOperation({ summary: 'Get my active subscription' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return user subscription',
+    type: SubscriptionResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'No active subscription found' })
+  getMySubscription(@GetUser('userId') userId: string) {
+    return this.subscriptionPlansService.getUserSubscription(userId);
+  }
+
+  @Get('user/:userId')
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get user active subscription (Admin only)' })
   @ApiParam({ name: 'userId', description: 'User ID' })
   @ApiResponse({
     status: 200,
     description: 'Return user subscription',
     type: SubscriptionResponseDto,
   })
+  @ApiResponse({ status: 404, description: 'User or subscription not found' })
   getUserSubscription(@Param('userId') userId: string) {
     return this.subscriptionPlansService.getUserSubscription(userId);
+  }
+
+  @Delete('cleanup/expired')
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Clean up all expired subscriptions (Admin only)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Expired subscriptions cleaned up',
+  })
+  cleanupExpiredSubscriptions() {
+    return this.subscriptionPlansService.cleanupExpiredSubscriptions();
   }
 }

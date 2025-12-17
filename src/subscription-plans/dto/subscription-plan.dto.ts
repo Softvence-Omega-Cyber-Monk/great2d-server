@@ -1,4 +1,4 @@
-import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import {
   IsArray,
   IsDateString,
@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsString,
   Min,
+  IsOptional,
 } from 'class-validator';
 
 export class CreateSubscriptionPlanDto {
@@ -62,25 +63,27 @@ export class SubscriptionPlanResponseDto {
 }
 
 export class SubscribeDto {
-  @ApiProperty({ example: 'user-id-uuid' })
-  @IsString()
-  @IsNotEmpty()
-  userId: string;
-
   @ApiProperty({ example: 'subscription-plan-id-uuid' })
   @IsString()
   @IsNotEmpty()
   subscriptionPlanId: string;
 
-  @ApiProperty({ example: 'TXN123456789' })
+  @ApiProperty({ 
+    example: 'TXN123456789',
+    description: 'Unique transaction ID from payment gateway'
+  })
   @IsString()
   @IsNotEmpty()
   transactionId: string;
 
-  @ApiProperty({ example: '2025-01-10T10:00:00Z' })
+  @ApiProperty({ 
+    example: '2025-12-17T10:00:00.000Z',
+    description: 'Subscription start date in ISO 8601 format (UTC recommended)',
+    required: false,
+  })
   @IsDateString()
-  @IsNotEmpty()
-  createdAt: string;
+  @IsOptional()
+  createdAt?: string;
 }
 
 export class SubscriptionResponseDto {
@@ -109,9 +112,13 @@ export class SubscriptionResponseDto {
   createdAt: Date;
 
   @ApiProperty()
-  subscriptionPlan: {
+  updatedAt: Date;
+
+  @ApiPropertyOptional()
+  subscriptionPlan?: {
     planName: string;
     price: number;
     duration: number;
+    features: string[];
   };
 }

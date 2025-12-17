@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -13,6 +14,8 @@ import {
 
 @Injectable()
 export class SubscriptionPlansService {
+  private readonly logger = new Logger(SubscriptionPlansService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateSubscriptionPlanDto) {
@@ -50,7 +53,6 @@ export class SubscriptionPlansService {
   }
 
   async update(subscriptionPlanId: string, dto: UpdateSubscriptionPlanDto) {
-    // Check if plan exists
     await this.findOne(subscriptionPlanId);
 
     return this.prisma.subscriptionPlan.update({
@@ -60,14 +62,15 @@ export class SubscriptionPlansService {
   }
 
   async remove(subscriptionPlanId: string) {
-    // Check if plan exists
     await this.findOne(subscriptionPlanId);
 
-    // Check if any active subscriptions exist
     const activeSubscriptions = await this.prisma.subscription.count({
       where: {
         subscriptionPlanId,
         isActive: true,
+        expiresAt: {
+          gte: new Date(),
+        },
       },
     });
 
@@ -84,13 +87,16 @@ export class SubscriptionPlansService {
     return { message: 'Subscription plan deleted successfully' };
   }
 
-  async subscribe(dto: SubscribeDto) {
+  async subscribe(userId: string, dto: SubscribeDto) {
+    this.logger.log(`Subscribe called for user: ${userId}`);
+
     // Check if plan exists
     const plan = await this.findOne(dto.subscriptionPlanId);
+    this.logger.log(`Plan found: ${plan.planName}, Duration: ${plan.duration} months`);
 
     // Check if user exists
     const user = await this.prisma.user.findUnique({
-      where: { userId: dto.userId },
+      where: { userId },
     });
 
     if (!user) {
@@ -106,30 +112,78 @@ export class SubscriptionPlansService {
       throw new ConflictException('Transaction ID already exists');
     }
 
-    // Check if user already has an active subscription
+    // Check if user already has an active, non-expired subscription
+    const now = new Date();
     const activeSubscription = await this.prisma.subscription.findFirst({
       where: {
-        userId: dto.userId,
+        userId,
         isActive: true,
         expiresAt: {
-          gte: new Date(),
+          gte: now,
         },
       },
     });
 
     if (activeSubscription) {
-      throw new BadRequestException('User already has an active subscription');
+      throw new BadRequestException(
+        'User already has an active subscription. Please unsubscribe first.',
+      );
     }
 
-    // Calculate expiration date based on plan duration
-    const startDate = new Date(dto.createdAt);
+    // Deactivate any expired subscriptions
+    await this.prisma.subscription.updateMany({
+      where: {
+        userId,
+        isActive: true,
+        expiresAt: {
+          lt: now,
+        },
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    // Use provided date or current date
+    const startDate = dto.createdAt ? new Date(dto.createdAt) : new Date();
+    
+    if (isNaN(startDate.getTime())) {
+      throw new BadRequestException('Invalid date format for createdAt');
+    }
+
+    // Validate that start date is not too far in the past
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    if (startDate < thirtyDaysAgo) {
+      throw new BadRequestException(
+        'Start date cannot be more than 30 days in the past. Please use current date or omit createdAt field.'
+      );
+    }
+
+    // Calculate expiration date - Use UTC to avoid timezone issues
     const expiresAt = new Date(startDate);
-    expiresAt.setMonth(expiresAt.getMonth() + plan.duration);
+    expiresAt.setUTCMonth(expiresAt.getUTCMonth() + plan.duration);
+
+    // Verify the subscription won't be expired immediately
+    if (expiresAt <= now) {
+      throw new BadRequestException(
+        `Subscription would expire immediately. Start date: ${startDate.toISOString()}, Expiry would be: ${expiresAt.toISOString()}`
+      );
+    }
+
+    this.logger.log(`Creating subscription:`);
+    this.logger.log(`User ID: ${userId}`);
+    this.logger.log(`Start Date: ${startDate.toISOString()}`);
+    this.logger.log(`Expires At: ${expiresAt.toISOString()}`);
+    this.logger.log(`Current Time: ${now.toISOString()}`);
+    this.logger.log(`Is Active: true`);
+    this.logger.log(`Expiry > Now: ${expiresAt > now}`);
 
     // Create subscription
-    return this.prisma.subscription.create({
+    const subscription = await this.prisma.subscription.create({
       data: {
-        userId: dto.userId,
+        userId,
         subscriptionPlanId: dto.subscriptionPlanId,
         transactionId: dto.transactionId,
         startDate: startDate,
@@ -142,10 +196,15 @@ export class SubscriptionPlansService {
             planName: true,
             price: true,
             duration: true,
+            features: true,
           },
         },
       },
     });
+
+    this.logger.log(`Subscription created successfully: ${subscription.subscriptionId}`);
+
+    return subscription;
   }
 
   async unsubscribe(userId: string) {
@@ -158,34 +217,87 @@ export class SubscriptionPlansService {
       throw new NotFoundException('User not found');
     }
 
-    // Find active subscription
+    const now = new Date();
+    
+    // Find active, non-expired subscription
     const activeSubscription = await this.prisma.subscription.findFirst({
       where: {
         userId,
         isActive: true,
+        expiresAt: {
+          gte: now,
+        },
       },
     });
 
     if (!activeSubscription) {
-      throw new BadRequestException('User has no active subscription');
+      throw new BadRequestException('No active subscription found');
     }
 
     // Deactivate subscription
     await this.prisma.subscription.update({
       where: { subscriptionId: activeSubscription.subscriptionId },
-      data: { isActive: false },
+      data: { 
+        isActive: false,
+        updatedAt: now,
+      },
     });
 
-    return { message: 'Unsubscribed successfully' };
+    return { 
+      message: 'Unsubscribed successfully',
+      subscriptionId: activeSubscription.subscriptionId,
+    };
   }
 
   async getUserSubscription(userId: string) {
+    const now = new Date();
+    
+    this.logger.log(`Getting subscription for user: ${userId}`);
+    this.logger.log(`Current time: ${now.toISOString()}`);
+
+    // First, let's see ALL subscriptions for this user for debugging
+    const allUserSubs = await this.prisma.subscription.findMany({
+      where: { userId },
+      include: { subscriptionPlan: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    this.logger.log(`Total subscriptions for user: ${allUserSubs.length}`);
+    
+    allUserSubs.forEach((sub, index) => {
+      this.logger.log(`Subscription ${index + 1}:`);
+      this.logger.log(`  ID: ${sub.subscriptionId}`);
+      this.logger.log(`  Plan: ${sub.subscriptionPlan.planName}`);
+      this.logger.log(`  Is Active: ${sub.isActive}`);
+      this.logger.log(`  Start Date: ${sub.startDate.toISOString()}`);
+      this.logger.log(`  Expires At: ${sub.expiresAt.toISOString()}`);
+      this.logger.log(`  Expires At > Now: ${sub.expiresAt > now}`);
+      this.logger.log(`  Expires At >= Now: ${sub.expiresAt >= now}`);
+    });
+
+    // Clean up expired subscriptions
+    const updateResult = await this.prisma.subscription.updateMany({
+      where: {
+        userId,
+        isActive: true,
+        expiresAt: {
+          lt: now,
+        },
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    this.logger.log(`Deactivated ${updateResult.count} expired subscriptions`);
+
+    // Get active, non-expired subscription
     const subscription = await this.prisma.subscription.findFirst({
       where: {
         userId,
         isActive: true,
         expiresAt: {
-          gte: new Date(),
+          gte: now,
         },
       },
       include: {
@@ -196,6 +308,37 @@ export class SubscriptionPlansService {
       },
     });
 
+    if (!subscription) {
+      this.logger.warn(`No active subscription found for user ${userId}`);
+      throw new NotFoundException('No active subscription found for this user');
+    }
+
+    this.logger.log(`Active subscription found: ${subscription.subscriptionId}`);
+
     return subscription;
+  }
+
+  async cleanupExpiredSubscriptions() {
+    const now = new Date();
+    
+    // Deactivate all expired subscriptions
+    const result = await this.prisma.subscription.updateMany({
+      where: {
+        isActive: true,
+        expiresAt: {
+          lt: now,
+        },
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    this.logger.log(`Cleaned up ${result.count} expired subscriptions`);
+
+    return {
+      message: 'Expired subscriptions cleaned up successfully',
+      count: result.count,
+    };
   }
 }

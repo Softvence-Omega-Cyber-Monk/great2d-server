@@ -170,7 +170,7 @@ export class BillService {
     let totalNew = 0;
     bills.forEach(b => {
       totalPrev += b.previousRate;
-      totalNew += b.newRate;
+      totalNew += b.newRate!;
     });
 
     const savings = totalPrev - totalNew;
@@ -253,7 +253,7 @@ export class BillService {
       billName: b.billName,
       provider: b.provider,
       newRate: `$${b.newRate}`,
-      percentSaved: `${this.calculateSavings(b.previousRate, b.newRate).toFixed(0)}% saved`,
+      percentSaved: `${this.calculateSavings(b.previousRate, b.newRate!).toFixed(0)}% saved`,
       category: b.category,
     }));
 
