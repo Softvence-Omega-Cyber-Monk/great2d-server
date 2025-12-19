@@ -63,12 +63,16 @@ export class BillTrackingService {
   /**
    * Get all bill tracking records for a user
    */
-  async findAll(userId: string, month?: string) {
+  async findAll(userId: string, month?: string, status?: BillPaymentStatus) {
     const where: any = { userId };
 
     if (month) {
       const monthDate = this.parseMonthToDate(month);
       where.month = monthDate;
+    }
+
+    if (status) {
+      where.paymentStatus = status;
     }
 
     return this.prisma.billTracking.findMany({

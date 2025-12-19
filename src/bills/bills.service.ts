@@ -18,15 +18,13 @@ export class BillService {
   constructor(private prisma: PrismaService) {}
 
   // ==================== PROVIDER METHODS ====================
-  // Note: Providers are global, not user-specific
   
   async createProvider(dto: CreateProviderDto) {
-    // Check if provider already exists
     const existing = await this.prisma.provider.findFirst({
       where: { 
         providerName: {
           equals: dto.providerName,
-          mode: 'insensitive' // Case-insensitive check
+          mode: 'insensitive'
         }
       }
     });
@@ -94,7 +92,6 @@ export class BillService {
       throw new NotFoundException(`Provider with ID ${providerId} not found`);
     }
 
-    // Check for name conflict if name is being updated
     if (dto.providerName && dto.providerName !== provider.providerName) {
       const existing = await this.prisma.provider.findFirst({
         where: { 
@@ -137,7 +134,6 @@ export class BillService {
       throw new NotFoundException(`Provider with ID ${providerId} not found`);
     }
 
-    // Check if provider has associated bills
     if (provider._count.bills > 0) {
       throw new ForbiddenException('Cannot delete provider with existing bills');
     }
@@ -149,7 +145,6 @@ export class BillService {
   // ==================== BILL METHODS ====================
   
   async createBill(userId: string, dto: CreateBillDto) {
-    // Verify user exists
     const user = await this.prisma.user.findUnique({
       where: { userId },
     });
@@ -158,7 +153,6 @@ export class BillService {
       throw new ForbiddenException('User not found or deleted');
     }
 
-    // Verify provider exists
     const provider = await this.prisma.provider.findUnique({
       where: { providerId: dto.providerId },
     });
@@ -218,7 +212,7 @@ export class BillService {
         provider: true,
         billTrackings: {
           orderBy: { month: 'desc' },
-          take: 12 // Last 12 months
+          take: 12
         }
       }
     });
@@ -247,7 +241,6 @@ export class BillService {
       throw new ForbiddenException('You do not have access to this bill');
     }
 
-    // If providerId is being updated, verify it exists
     if (dto.providerId) {
       const provider = await this.prisma.provider.findUnique({
         where: { providerId: dto.providerId },
@@ -343,6 +336,168 @@ export class BillService {
         provider: true
       }
     });
+  }
+
+  // ==================== NEW ENDPOINTS IMPLEMENTATION ====================
+
+  async getActiveNegotiationsCount(userId: string) {
+    const count = await this.prisma.bill.count({
+      where: {
+        userId,
+        status: 'negotiating'
+      }
+    });
+
+    return {
+      activeNegotiationsCount: count
+    };
+  }
+
+  async getRecentNegotiations(userId: string, limit: number = 10) {
+    const bills = await this.prisma.bill.findMany({
+      where: {
+        userId,
+        status: {
+          in: ['negotiating', 'successful', 'sent']
+        }
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: limit,
+      include: {
+        provider: true,
+        billTrackings: {
+          orderBy: { month: 'desc' },
+          take: 1
+        }
+      }
+    });
+
+    return {
+      count: bills.length,
+      negotiations: bills
+    };
+  }
+
+  async getThisMonthSavings(userId: string) {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const successfulBills = await this.prisma.bill.findMany({
+      where: {
+        userId,
+        status: 'successful',
+        updatedAt: {
+          gte: startOfMonth,
+          lte: endOfMonth
+        }
+      },
+      include: {
+        billTrackings: {
+          orderBy: { month: 'desc' },
+          take: 1
+        }
+      }
+    });
+
+    const totalSavings = successfulBills.reduce((sum, bill) => {
+      const latestTracking = bill.billTrackings[0];
+      return sum + (latestTracking?.amount || 0);
+    }, 0);
+
+    return {
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
+      totalSavings: parseFloat(totalSavings.toFixed(2)),
+      billsCount: successfulBills.length
+    };
+  }
+
+  async getAllTimeSavings(userId: string) {
+    const successfulBills = await this.prisma.bill.findMany({
+      where: {
+        userId,
+        status: 'successful'
+      },
+      include: {
+        billTrackings: true
+      }
+    });
+
+    const totalSavings = successfulBills.reduce((sum, bill) => {
+      const billTotalSavings = bill.billTrackings.reduce((trackingSum, tracking) => {
+        return trackingSum + (tracking.amount || 0);
+      }, 0);
+      return sum + billTotalSavings;
+    }, 0);
+
+    return {
+      totalSavings: parseFloat(totalSavings.toFixed(2)),
+      successfulBillsCount: successfulBills.length
+    };
+  }
+
+  async getSavingsByCategory(userId: string, month?: number, year?: number) {
+    let whereClause: any = {
+      userId,
+      status: 'successful'
+    };
+
+    // If month and year are provided, filter by that specific month
+    if (month && year) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+      
+      whereClause.updatedAt = {
+        gte: startDate,
+        lte: endDate
+      };
+    }
+
+    const successfulBills = await this.prisma.bill.findMany({
+      where: whereClause,
+      include: {
+        provider: true,
+        billTrackings: month && year ? {
+          where: {
+            month: new Date(year, month - 1, 1)
+          }
+        } : true
+      }
+    });
+
+    // Group bills by category and calculate savings
+    const categoryMap = new Map<string, number>();
+    
+    successfulBills.forEach(bill => {
+      // Assuming provider has a category field, adjust based on your schema
+      const category = (bill.provider as any).category || 'other';
+      
+      const savings = bill.billTrackings.reduce((sum, tracking) => {
+        return sum + (tracking.amount || 0);
+      }, 0);
+
+      categoryMap.set(category, (categoryMap.get(category) || 0) + savings);
+    });
+
+    // Calculate total savings for percentage calculation
+    const totalSavings = Array.from(categoryMap.values()).reduce((sum, val) => sum + val, 0);
+
+    // Convert to array format with percentages
+    const savingsByCategory = Array.from(categoryMap.entries()).map(([category, amount]) => ({
+      category,
+      savingsAmount: parseFloat(amount.toFixed(2)),
+      percentage: totalSavings > 0 ? parseFloat(((amount / totalSavings) * 100).toFixed(2)) : 0
+    }));
+
+    // Sort by savings amount descending
+    savingsByCategory.sort((a, b) => b.savingsAmount - a.savingsAmount);
+
+    return {
+      period: month && year ? { month, year } : 'all-time',
+      totalSavings: parseFloat(totalSavings.toFixed(2)),
+      categories: savingsByCategory
+    };
   }
 
   // ==================== SAVINGS GOALS & STATS ====================

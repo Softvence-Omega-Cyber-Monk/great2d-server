@@ -33,7 +33,6 @@ import { JwtGuard } from 'src/auth/guards/jwt.guards';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
 
 // ==================== PROVIDERS CONTROLLER ====================
-// Providers are global resources, not user-specific
 @ApiTags('Providers')
 @Controller('providers')
 @UseGuards(JwtGuard)
@@ -169,6 +168,60 @@ export class BillController {
   ) {
     return this.billService.getRecentActivity(userId, limit || 10);
   }
+
+  // ==================== NEW ENDPOINTS ====================
+
+  @Get('negotiations/active-count')
+  @ApiOperation({ summary: 'Get count of active negotiations (bills with status: negotiating)' })
+  @ApiResponse({ status: 200, description: 'Count of active negotiations' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getActiveNegotiationsCount(@GetUser('userId') userId: string) {
+    return this.billService.getActiveNegotiationsCount(userId);
+  }
+
+  @Get('negotiations/recent')
+  @ApiOperation({ summary: 'Get recent negotiations (bills with status: negotiating, successful, sent)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiResponse({ status: 200, description: 'List of recent negotiation bills' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getRecentNegotiations(
+    @GetUser('userId') userId: string,
+    @Query('limit') limit?: number
+  ) {
+    return this.billService.getRecentNegotiations(userId, limit || 10);
+  }
+
+  @Get('savings/this-month')
+  @ApiOperation({ summary: 'Get sum of savings for bills that became successful this month' })
+  @ApiResponse({ status: 200, description: 'This month savings amount' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getThisMonthSavings(@GetUser('userId') userId: string) {
+    return this.billService.getThisMonthSavings(userId);
+  }
+
+  @Get('savings/all-time')
+  @ApiOperation({ summary: 'Get all-time total savings from successful bills' })
+  @ApiResponse({ status: 200, description: 'All-time savings amount' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getAllTimeSavings(@GetUser('userId') userId: string) {
+    return this.billService.getAllTimeSavings(userId);
+  }
+
+  @Get('savings/by-category')
+  @ApiOperation({ summary: 'Get savings grouped by category with optional month/year filter' })
+  @ApiQuery({ name: 'month', required: false, type: Number, example: 12, description: 'Month (1-12)' })
+  @ApiQuery({ name: 'year', required: false, type: Number, example: 2024, description: 'Year' })
+  @ApiResponse({ status: 200, description: 'Savings by category with amounts and percentages' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getSavingsByCategory(
+    @GetUser('userId') userId: string,
+    @Query('month') month?: number,
+    @Query('year') year?: number,
+  ) {
+    return this.billService.getSavingsByCategory(userId, month, year);
+  }
+
+  // ==================== EXISTING ENDPOINTS ====================
 
   @Get(':id')
   @ApiOperation({ summary: 'Get bill by ID with tracking history' })

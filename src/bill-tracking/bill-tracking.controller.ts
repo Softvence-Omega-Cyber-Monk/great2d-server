@@ -1,4 +1,7 @@
-// bill-tracking.controller.ts
+// ============================================
+// FILE 1: bill-tracking.controller.ts
+// ============================================
+// Change @Request() req to use @GetUser() decorator like bills controller
 
 import {
   Controller,
@@ -9,7 +12,6 @@ import {
   Param,
   Delete,
   UseGuards,
-  Request,
   Query,
   HttpStatus,
   HttpCode
@@ -30,9 +32,11 @@ import {
   MonthlyBillSummaryDto
 } from './dto/bill-tracking.dto';
 import { JwtGuard } from 'src/auth/guards/jwt.guards';
+import { GetUser } from 'src/auth/decorators/get-user.decorator';
+import { BillPaymentStatus } from 'generated/prisma';
 
 @ApiTags('Bill Tracking')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtGuard)
 @Controller('bill-tracking')
 export class BillTrackingController {
@@ -60,20 +64,30 @@ export class BillTrackingController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'User is not authenticated'
   })
-  create(@Request() req, @Body() createDto: CreateBillTrackingDto) {
-    return this.billTrackingService.create(req.user.userId, createDto);
+  create(
+    @GetUser('userId') userId: string,
+    @Body() createDto: CreateBillTrackingDto
+  ) {
+    return this.billTrackingService.create(userId, createDto);
   }
 
   @Get()
   @ApiOperation({
     summary: 'Get all bill tracking records',
-    description: 'Retrieves all bill tracking records for the authenticated user. Can be filtered by month using the query parameter.'
+    description: 'Retrieves all bill tracking records for the authenticated user. Can be filtered by month and payment status using query parameters.'
   })
   @ApiQuery({
     name: 'month',
     required: false,
     description: 'Filter by month in YYYY-MM format (e.g., 2024-01)',
     example: '2024-01'
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'Filter by payment status',
+    enum: BillPaymentStatus,
+    example: BillPaymentStatus.due
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -84,8 +98,12 @@ export class BillTrackingController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'User is not authenticated'
   })
-  findAll(@Request() req, @Query('month') month?: string) {
-    return this.billTrackingService.findAll(req.user.userId, month);
+  findAll(
+    @GetUser('userId') userId: string,
+    @Query('month') month?: string,
+    @Query('status') status?: BillPaymentStatus
+  ) {
+    return this.billTrackingService.findAll(userId, month, status);
   }
 
   @Get('summary/:month')
@@ -111,8 +129,11 @@ export class BillTrackingController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'User is not authenticated'
   })
-  getMonthlySummary(@Request() req, @Param('month') month: string) {
-    return this.billTrackingService.getMonthlySummary(req.user.userId, month);
+  getMonthlySummary(
+    @GetUser('userId') userId: string,
+    @Param('month') month: string
+  ) {
+    return this.billTrackingService.getMonthlySummary(userId, month);
   }
 
   @Get(':id')
@@ -138,8 +159,11 @@ export class BillTrackingController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'User is not authenticated'
   })
-  findOne(@Request() req, @Param('id') id: string) {
-    return this.billTrackingService.findOne(req.user.userId, id);
+  findOne(
+    @GetUser('userId') userId: string,
+    @Param('id') id: string
+  ) {
+    return this.billTrackingService.findOne(userId, id);
   }
 
   @Patch(':id')
@@ -170,11 +194,11 @@ export class BillTrackingController {
     description: 'User is not authenticated'
   })
   update(
-    @Request() req,
+    @GetUser('userId') userId: string,
     @Param('id') id: string,
     @Body() updateDto: UpdateBillTrackingDto
   ) {
-    return this.billTrackingService.update(req.user.userId, id, updateDto);
+    return this.billTrackingService.update(userId, id, updateDto);
   }
 
   @Patch(':id/mark-paid')
@@ -201,8 +225,11 @@ export class BillTrackingController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'User is not authenticated'
   })
-  markAsPaid(@Request() req, @Param('id') id: string) {
-    return this.billTrackingService.markAsPaid(req.user.userId, id);
+  markAsPaid(
+    @GetUser('userId') userId: string,
+    @Param('id') id: string
+  ) {
+    return this.billTrackingService.markAsPaid(userId, id);
   }
 
   @Delete(':id')
@@ -228,7 +255,11 @@ export class BillTrackingController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'User is not authenticated'
   })
-  remove(@Request() req, @Param('id') id: string) {
-    return this.billTrackingService.remove(req.user.userId, id);
+  remove(
+    @GetUser('userId') userId: string,
+    @Param('id') id: string
+  ) {
+    return this.billTrackingService.remove(userId, id);
   }
 }
+
