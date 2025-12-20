@@ -39,7 +39,7 @@ export class SubscriptionPlansController {
   @Post()
   @UseGuards(JwtGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Create a new subscription plan (Admin only)' })
+  @ApiOperation({ summary: 'Create a new subscription plan' })
   @ApiResponse({
     status: 201,
     description: 'Subscription plan created successfully',
@@ -75,10 +75,9 @@ export class SubscriptionPlansController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtGuard, RolesGuard)
-  @Roles(UserRole.admin)
+  @UseGuards(JwtGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Update subscription plan (Admin only)' })
+  @ApiOperation({ summary: 'Update subscription plan' })
   @ApiParam({ name: 'id', description: 'Subscription plan ID' })
   @ApiResponse({
     status: 200,
@@ -95,10 +94,9 @@ export class SubscriptionPlansController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtGuard, RolesGuard)
-  @Roles(UserRole.admin)
+  @UseGuards(JwtGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Delete subscription plan (Admin only)' })
+  @ApiOperation({ summary: 'Delete subscription plan' })
   @ApiParam({ name: 'id', description: 'Subscription plan ID' })
   @ApiResponse({
     status: 200,
