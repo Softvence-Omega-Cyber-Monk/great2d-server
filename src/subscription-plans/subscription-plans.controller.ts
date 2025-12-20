@@ -24,10 +24,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { JwtGuard } from 'src/auth/guards/jwt.guards';
-import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { Roles } from 'src/auth/decorators/roles.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
-import { UserRole } from 'generated/prisma';
 
 @ApiTags('Subscription Plans')
 @Controller('subscription-plans')
@@ -153,8 +150,7 @@ export class SubscriptionPlansController {
   }
 
   @Get('user/:userId')
-  @UseGuards(JwtGuard, RolesGuard)
-  @Roles(UserRole.admin)
+  @UseGuards(JwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get user active subscription (Admin only)' })
   @ApiParam({ name: 'userId', description: 'User ID' })
@@ -169,8 +165,7 @@ export class SubscriptionPlansController {
   }
 
   @Delete('cleanup/expired')
-  @UseGuards(JwtGuard, RolesGuard)
-  @Roles(UserRole.admin)
+  @UseGuards(JwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Clean up all expired subscriptions (Admin only)' })
   @ApiResponse({
