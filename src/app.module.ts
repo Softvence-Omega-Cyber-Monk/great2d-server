@@ -10,8 +10,9 @@ import { MailModule } from './mail/mail.module';
 import { StripeKeyModule } from './key-provider/stripe-key.module';
 import { BillTrackingModule } from './bill-tracking/bill-tracking.module';
 import { PayPalModule } from './paypal/paypal.module';
+import { FirebaseModule } from './firebase/firebase.module';
 
 @Module({
-  imports: [PrismaModule, ConfigModule.forRoot({isGlobal: true}), AuthModule, UsersModule, PaymentMethodsModule, SubscriptionPlansModule, BillModule, MailModule, StripeKeyModule, BillTrackingModule, PayPalModule],
+  imports: [PrismaModule, ConfigModule.forRoot({isGlobal: true}), AuthModule, UsersModule, PaymentMethodsModule, SubscriptionPlansModule, BillModule, MailModule, StripeKeyModule, BillTrackingModule, PayPalModule, FirebaseModule],
 })
 export class AppModule {}

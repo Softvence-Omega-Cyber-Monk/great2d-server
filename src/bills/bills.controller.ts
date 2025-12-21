@@ -29,6 +29,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtGuard } from 'src/auth/guards/jwt.guards';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 // ==================== BILLS CONTROLLER ====================
 @ApiTags('Bills')
@@ -36,7 +37,10 @@ import { GetUser } from 'src/auth/decorators/get-user.decorator';
 @UseGuards(JwtGuard)
 @ApiBearerAuth('JWT-auth')
 export class BillController {
-  constructor(private readonly billService: BillService) {}
+  constructor(
+    private readonly billService: BillService,
+    private readonly prisma: PrismaService
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -150,6 +154,86 @@ export class BillController {
     return this.billService.getSavingsByCategory(userId, month, year);
   }
 
+  // ==================== FIREBASE NOTIFICATION ENDPOINTS ====================
+
+  @Get('notifications/all')
+  @ApiOperation({ 
+    summary: 'Get FCM device token for current user',
+    description: 'Get the registered FCM token for the logged-in user'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Current user FCM token information',
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', example: 'uuid-here' },
+        email: { type: 'string', example: 'user@example.com' },
+        fcmToken: { type: 'string', example: 'fZj8X...' },
+        isRegistered: { type: 'boolean', example: true }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getAllNotificationTokens(@GetUser('userId') userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+      select: {
+        userId: true,
+        email: true,
+        fcmToken: true
+      }
+    });
+
+    if (!user) {
+      return {
+        userId,
+        email: null,
+        fcmToken: null,
+        isRegistered: false
+      };
+    }
+
+    return {
+      userId: user.userId,
+      email: user.email,
+      fcmToken: user.fcmToken,
+      isRegistered: !!user.fcmToken
+    };
+  }
+
+  @Get('notifications/status')
+  @ApiOperation({ 
+    summary: 'Check if current user device is registered for notifications',
+    description: 'Check if the current user has a registered FCM token'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Notification status',
+    schema: {
+      type: 'object',
+      properties: {
+        isRegistered: { type: 'boolean', example: true },
+        hasToken: { type: 'boolean', example: true },
+        fcmToken: { type: 'string', example: 'fZj8X...' }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getNotificationStatus(@GetUser('userId') userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+      select: { fcmToken: true }
+    });
+
+    return {
+      isRegistered: !!user?.fcmToken,
+      hasToken: !!user?.fcmToken,
+      fcmToken: user?.fcmToken || null
+    };
+  }
+
   // ==================== EXISTING ENDPOINTS ====================
 
   @Get(':id')
@@ -166,24 +250,61 @@ export class BillController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a bill by ID' })
-  @ApiResponse({ status: 200, description: 'Bill updated successfully' })
+  @ApiOperation({ 
+    summary: 'Update a bill by ID (can also update FCM token)',
+    description: 'Update bill details. If status changes, a push notification will be sent. Can also update FCM token by including it in the request body.'
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        providerEmail: { type: 'string', example: 'support@provider.com' },
+        providerName: { type: 'string', example: 'Provider Name' },
+        accountDetails: { type: 'string', example: 'Account #12345' },
+        negotiationRecommendation: { type: 'string' },
+        emailSubject: { type: 'string' },
+        emailBody: { type: 'string' },
+        emailThreadId: { type: 'string' },
+        emailMessageId: { type: 'string' },
+        status: { 
+          type: 'string', 
+          enum: ['draft', 'sent', 'negotiating', 'successful', 'failed', 'cancelled']
+        },
+        sentAt: { type: 'string', format: 'date-time' },
+        fcmToken: { 
+          type: 'string', 
+          example: 'fZj8X9kS3hY:APA91bF7Z...',
+          description: 'Optional: Update FCM token for push notifications'
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Bill updated successfully, notification sent if status changed' })
   @ApiResponse({ status: 404, description: 'Bill not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
-  update(
+  async update(
     @Param('id') id: string,
-    @Body() dto: UpdateBillDto,
+    @Body() dto: UpdateBillDto & { fcmToken?: string },
     @GetUser('userId') userId: string,
   ) {
+    // If FCM token is provided, update it in user table
+    if (dto.fcmToken) {
+      await this.prisma.user.update({
+        where: { userId },
+        data: { fcmToken: dto.fcmToken }
+      });
+    }
+
+    // Update the bill (this will trigger notification if status changed)
     return this.billService.updateBill(userId, id, dto);
   }
 
   @Patch(':id/mark-sent')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Mark bill negotiation email as sent' })
+  @ApiOperation({ summary: 'Mark bill negotiation email as sent (triggers notification)' })
   @ApiBody({ type: MarkBillAsSentDto })
-  @ApiResponse({ status: 200, description: 'Bill marked as sent' })
+  @ApiResponse({ status: 200, description: 'Bill marked as sent, notification sent' })
   @ApiResponse({ status: 404, description: 'Bill not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -202,7 +323,7 @@ export class BillController {
 
   @Patch(':id/status')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update bill status' })
+  @ApiOperation({ summary: 'Update bill status (triggers notification)' })
   @ApiBody({ 
     schema: { 
       type: 'object', 
@@ -214,7 +335,7 @@ export class BillController {
       } 
     } 
   })
-  @ApiResponse({ status: 200, description: 'Bill status updated' })
+  @ApiResponse({ status: 200, description: 'Bill status updated, notification sent' })
   @ApiResponse({ status: 404, description: 'Bill not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })

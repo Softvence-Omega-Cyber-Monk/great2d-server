@@ -90,3 +90,13 @@ export class MarkBillAsSentDto {
     @IsOptional()
     emailMessageId?: string;
 }
+
+export class UpdateFCMTokenDto {
+    @ApiProperty({ 
+        example: 'fZj8X9kS3hY:APA91bF7Z...',
+        description: 'Firebase Cloud Messaging device token'
+    })
+    @IsString()
+    @IsNotEmpty()
+    fcmToken: string;
+}

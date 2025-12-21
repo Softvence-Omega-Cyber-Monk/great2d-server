@@ -4,6 +4,7 @@ import {
   ForbiddenException
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { FirebaseService } from 'src/firebase/firebase.service';
 import { 
   CreateBillDto, 
   UpdateBillDto, 
@@ -12,7 +13,10 @@ import {
 
 @Injectable()
 export class BillService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private firebaseService: FirebaseService
+  ) {}
 
   // ==================== BILL METHODS ====================
   
@@ -114,6 +118,11 @@ export class BillService {
       }
     });
 
+    // Send notification if status changed
+    if (dto.status && dto.status !== bill.status) {
+      await this.sendStatusChangeNotification(userId, updatedBill, bill.status);
+    }
+
     return updatedBill;
   }
 
@@ -147,7 +156,8 @@ export class BillService {
       throw new ForbiddenException('You do not have access to this bill');
     }
 
-    return this.prisma.bill.update({
+    const oldStatus = bill.status;
+    const updatedBill = await this.prisma.bill.update({
       where: { id },
       data: {
         status: 'sent',
@@ -156,6 +166,13 @@ export class BillService {
         emailMessageId,
       }
     });
+
+    // Send notification
+    if (oldStatus !== 'sent') {
+      await this.sendStatusChangeNotification(userId, updatedBill, oldStatus);
+    }
+
+    return updatedBill;
   }
 
   async updateBillStatus(userId: string, id: string, status: string) {
@@ -171,10 +188,42 @@ export class BillService {
       throw new ForbiddenException('You do not have access to this bill');
     }
 
-    return this.prisma.bill.update({
+    const oldStatus = bill.status;
+    const updatedBill = await this.prisma.bill.update({
       where: { id },
       data: { status: status as any }
     });
+
+    // Send notification
+    if (oldStatus !== status) {
+      await this.sendStatusChangeNotification(userId, updatedBill, oldStatus);
+    }
+
+    return updatedBill;
+  }
+
+  // ==================== NOTIFICATION HELPER ====================
+
+  private async sendStatusChangeNotification(userId: string, bill: any, oldStatus: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { userId },
+        select: { fcmToken: true }
+      });
+
+      if (user?.fcmToken) {
+        await this.firebaseService.sendBillStatusNotification(
+          user.fcmToken,
+          bill.providerName || bill.providerEmail,
+          oldStatus,
+          bill.status,
+          bill.id
+        );
+      }
+    } catch (error) {
+      // Log error but don't fail the request
+      console.error('Failed to send notification:', error.message);
+    }
   }
 
   // ==================== NEW ENDPOINTS IMPLEMENTATION ====================
@@ -302,7 +351,6 @@ export class BillService {
       }
     });
 
-    // Group bills by provider email and calculate savings
     const providerMap = new Map<string, { email: string; name: string | null; savings: number }>();
     
     successfulBills.forEach(bill => {

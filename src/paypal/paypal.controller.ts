@@ -36,10 +36,10 @@ export class PayPalController {
 
   @Post('create-payment')
   @UseGuards(JwtGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Create a PayPal payment order',
-    description: 'Creates a new PayPal order and returns the approval URL where the user should be redirected to complete the payment. The order is created in pending status and must be captured after user approval.'
+    description: 'Creates a new PayPal order for a subscription payment and returns the approval URL where the user should be redirected to complete the payment.'
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -49,10 +49,6 @@ export class PayPalController {
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
     description: 'Invalid payment data or PayPal API error',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Bill tracking or subscription not found',
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
@@ -71,10 +67,10 @@ export class PayPalController {
 
   @Post('capture-payment')
   @UseGuards(JwtGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Capture a PayPal payment',
-    description: 'Captures (completes) a PayPal payment after the user has approved it. This should be called after the user returns from the PayPal approval page. If the payment is for a bill, it will automatically mark the bill as paid. If for a subscription, it will activate the subscription.'
+    description: 'Captures (completes) a PayPal payment after the user has approved it. This should be called after the user returns from the PayPal approval page.'
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -102,10 +98,10 @@ export class PayPalController {
 
   @Get('payments')
   @UseGuards(JwtGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Get all user payments',
-    description: 'Retrieves all PayPal payment records for the authenticated user, including associated bill tracking and subscription information. Results are ordered by creation date (newest first).'
+    description: 'Retrieves all PayPal payment records for the authenticated user. Results are ordered by creation date (newest first).'
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -122,10 +118,10 @@ export class PayPalController {
 
   @Get('payments/:id')
   @UseGuards(JwtGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Get payment details',
-    description: 'Retrieves detailed information about a specific PayPal payment, including the full PayPal response, payer information, and related bill or subscription data.'
+    description: 'Retrieves detailed information about a specific PayPal payment, including the full PayPal response and payer information.'
   })
   @ApiParam({
     name: 'id',
@@ -151,10 +147,10 @@ export class PayPalController {
 
   @Post('refund')
   @UseGuards(JwtGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Refund a payment',
-    description: 'Issues a full or partial refund for a completed PayPal payment. Only completed payments can be refunded. If the payment was for a bill, the bill status will be reverted to "due". You can specify a partial refund amount or leave it empty for a full refund.'
+    description: 'Issues a full or partial refund for a completed PayPal payment. Only completed payments can be refunded. You can specify a partial refund amount or leave it empty for a full refund.'
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -182,11 +178,11 @@ export class PayPalController {
 
   @Post('cancel/:id')
   @UseGuards(JwtGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Cancel a pending payment',
-    description: 'Cancels a pending PayPal payment that has not yet been captured. Only pending payments can be cancelled. This is useful when a user abandons the payment flow or decides not to proceed.'
+    description: 'Cancels a pending PayPal payment that has not yet been captured. Only pending payments can be cancelled.'
   })
   @ApiParam({
     name: 'id',
@@ -218,7 +214,7 @@ export class PayPalController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'PayPal webhook endpoint',
-    description: 'Receives webhook notifications from PayPal about payment events such as completed payments, refunds, and failures. This endpoint should be configured in your PayPal Developer Dashboard. It does not require authentication as PayPal sends the requests directly.'
+    description: 'Receives webhook notifications from PayPal about payment events such as completed payments, refunds, and failures. This endpoint should be configured in your PayPal Developer Dashboard.'
   })
   @ApiResponse({
     status: HttpStatus.OK,

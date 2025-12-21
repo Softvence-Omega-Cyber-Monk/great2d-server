@@ -1,7 +1,7 @@
 // paypal/dto/paypal.dto.ts
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString, IsOptional, IsUUID, IsEnum, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsOptional } from 'class-validator';
 import { PayPalPaymentStatus } from 'generated/prisma';
 
 export class CreatePayPalPaymentDto {
@@ -12,7 +12,6 @@ export class CreatePayPalPaymentDto {
   })
   @IsNotEmpty()
   @IsNumber()
-  @Min(0.01)
   amount: number;
 
   @ApiPropertyOptional({
@@ -25,28 +24,12 @@ export class CreatePayPalPaymentDto {
   currency?: string;
 
   @ApiProperty({
-    description: 'Payment description',
-    example: 'Payment for Internet Bill - January 2024'
+    description: 'Subscription or service name',
+    example: 'Netflix Premium Subscription'
   })
   @IsNotEmpty()
   @IsString()
-  description: string;
-
-  @ApiPropertyOptional({
-    description: 'Bill tracking ID if paying for a bill',
-    example: '123e4567-e89b-12d3-a456-426614174000'
-  })
-  @IsOptional()
-  @IsUUID()
-  billTrackingId?: string;
-
-  @ApiPropertyOptional({
-    description: 'Subscription ID if paying for a subscription',
-    example: '123e4567-e89b-12d3-a456-426614174000'
-  })
-  @IsOptional()
-  @IsUUID()
-  subscriptionId?: string;
+  subscriptionName: string;
 }
 
 export class CapturePayPalPaymentDto {
@@ -65,7 +48,7 @@ export class RefundPayPalPaymentDto {
     example: '123e4567-e89b-12d3-a456-426614174000'
   })
   @IsNotEmpty()
-  @IsUUID()
+  @IsString()
   paymentId: string;
 
   @ApiPropertyOptional({
@@ -74,7 +57,6 @@ export class RefundPayPalPaymentDto {
   })
   @IsOptional()
   @IsNumber()
-  @Min(0.01)
   amount?: number;
 
   @ApiPropertyOptional({
@@ -124,17 +106,17 @@ export class PayPalPaymentResponseDto {
   currency: string;
 
   @ApiProperty({
+    description: 'Subscription or service name',
+    example: 'Netflix Premium Subscription'
+  })
+  subscriptionName: string;
+
+  @ApiProperty({
     description: 'Payment status',
     enum: PayPalPaymentStatus,
     example: PayPalPaymentStatus.completed
   })
   status: PayPalPaymentStatus;
-
-  @ApiPropertyOptional({
-    description: 'Payment description',
-    example: 'Payment for Internet Bill'
-  })
-  description?: string;
 
   @ApiPropertyOptional({
     description: 'Payer email address',

@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
 import { CreatePayPalPaymentDto, RefundPayPalPaymentDto } from './dto/paypal.dto';
-import { PayPalPaymentStatus, BillPaymentStatus } from 'generated/prisma';
+import { PayPalPaymentStatus } from 'generated/prisma';
 
 @Injectable()
 export class PayPalService {
@@ -59,26 +59,6 @@ export class PayPalService {
    * Create PayPal order
    */
   async createPayment(userId: string, createDto: CreatePayPalPaymentDto) {
-    // Validate bill tracking if provided
-    if (createDto.billTrackingId) {
-      const billTracking = await this.prisma.billTracking.findFirst({
-        where: { id: createDto.billTrackingId, userId }
-      });
-      if (!billTracking) {
-        throw new NotFoundException('Bill tracking record not found');
-      }
-    }
-
-    // Validate subscription if provided
-    if (createDto.subscriptionId) {
-      const subscription = await this.prisma.subscription.findFirst({
-        where: { subscriptionId: createDto.subscriptionId, userId }
-      });
-      if (!subscription) {
-        throw new NotFoundException('Subscription not found');
-      }
-    }
-
     try {
       const accessToken = await this.getAccessToken();
 
@@ -91,7 +71,7 @@ export class PayPalService {
               currency_code: createDto.currency || 'USD',
               value: createDto.amount.toFixed(2),
             },
-            description: createDto.description,
+            description: createDto.subscriptionName,
           },
         ],
         application_context: {
@@ -125,10 +105,8 @@ export class PayPalService {
           paypalOrderId: orderId,
           amount: createDto.amount,
           currency: createDto.currency || 'USD',
-          description: createDto.description,
+          subscriptionName: createDto.subscriptionName,
           status: PayPalPaymentStatus.pending,
-          billTrackingId: createDto.billTrackingId,
-          subscriptionId: createDto.subscriptionId,
           paypalResponse: response.data,
         },
       });
@@ -161,6 +139,10 @@ export class PayPalService {
 
     if (payment.status === PayPalPaymentStatus.completed) {
       throw new BadRequestException('Payment already completed');
+    }
+
+    if (payment.status === PayPalPaymentStatus.cancelled) {
+      throw new BadRequestException('Payment was cancelled');
     }
 
     try {
@@ -197,25 +179,6 @@ export class PayPalService {
         },
       });
 
-      // If payment is for a bill, mark the bill as paid
-      if (payment.billTrackingId) {
-        await this.prisma.billTracking.update({
-          where: { id: payment.billTrackingId },
-          data: {
-            paymentStatus: BillPaymentStatus.paid,
-            paidAt: new Date(),
-          },
-        });
-      }
-
-      // If payment is for a subscription, activate it
-      if (payment.subscriptionId) {
-        await this.prisma.subscription.update({
-          where: { subscriptionId: payment.subscriptionId },
-          data: { isActive: true },
-        });
-      }
-
       return updatedPayment;
     } catch (error) {
       console.error('PayPal capture error:', error.response?.data || error.message);
@@ -241,24 +204,6 @@ export class PayPalService {
   async getUserPayments(userId: string) {
     return this.prisma.payPalPayment.findMany({
       where: { userId },
-      include: {
-        billTracking: {
-          select: {
-            billName: true,
-            category: true,
-            month: true,
-          },
-        },
-        subscription: {
-          select: {
-            subscriptionPlan: {
-              select: {
-                planName: true,
-              },
-            },
-          },
-        },
-      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -269,14 +214,6 @@ export class PayPalService {
   async getPaymentDetails(userId: string, paymentId: string) {
     const payment = await this.prisma.payPalPayment.findFirst({
       where: { id: paymentId, userId },
-      include: {
-        billTracking: true,
-        subscription: {
-          include: {
-            subscriptionPlan: true,
-          },
-        },
-      },
     });
 
     if (!payment) {
@@ -342,17 +279,6 @@ export class PayPalService {
           refundedAt: new Date(),
         },
       });
-
-      // If payment was for a bill, revert bill status
-      if (payment.billTrackingId) {
-        await this.prisma.billTracking.update({
-          where: { id: payment.billTrackingId },
-          data: {
-            paymentStatus: BillPaymentStatus.due,
-            paidAt: null,
-          },
-        });
-      }
 
       return updatedPayment;
     } catch (error) {

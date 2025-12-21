@@ -25,7 +25,7 @@ model User {
   isDeleted                 Boolean  @default(false)
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
-
+  fcmToken                  String?
   monthlySavingsGoal        Float?    @default(0)
   passwordResets            PasswordReset[]
 
@@ -52,7 +52,7 @@ model Bill {
   emailThreadId             String?       // Gmail thread ID
   emailMessageId            String?       // Gmail message ID
   status                    BillStatus    @default(draft)
-  sentAt                    DateTime?     // When negotiation email was sent
+  sentAt                    DateTime?     
   createdAt                 DateTime      @default(now())
   updatedAt                 DateTime      @updatedAt
   
@@ -171,6 +171,7 @@ model PayPalPayment {
   amount            Float
   currency          String              @default("USD")
   status            PayPalPaymentStatus @default(pending)
+  subscriptionName  String?
   description       String?
   payerEmail        String?
   payerName         String?
