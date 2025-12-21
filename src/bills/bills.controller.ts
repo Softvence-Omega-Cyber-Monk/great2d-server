@@ -125,26 +125,84 @@ export class BillController {
   }
 
   @Get('savings/this-month')
-  @ApiOperation({ summary: 'Get sum of savings for bills that became successful this month' })
-  @ApiResponse({ status: 200, description: 'This month savings amount' })
+  @ApiOperation({ 
+    summary: 'Get sum of savings for bills that became successful this month',
+    description: 'Calculates savings as (actualAmount - negotiatedAmount) for all successful bills updated this month'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'This month savings amount',
+    schema: {
+      type: 'object',
+      properties: {
+        month: { type: 'number', example: 12 },
+        year: { type: 'number', example: 2024 },
+        totalSavings: { type: 'number', example: 450.00 },
+        billsCount: { type: 'number', example: 3 }
+      }
+    }
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   getThisMonthSavings(@GetUser('userId') userId: string) {
     return this.billService.getThisMonthSavings(userId);
   }
 
   @Get('savings/all-time')
-  @ApiOperation({ summary: 'Get all-time total savings from successful bills' })
-  @ApiResponse({ status: 200, description: 'All-time savings amount' })
+  @ApiOperation({ 
+    summary: 'Get all-time total savings from successful bills',
+    description: 'Calculates total savings as sum of (actualAmount - negotiatedAmount) for all successful bills'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'All-time savings amount',
+    schema: {
+      type: 'object',
+      properties: {
+        totalSavings: { type: 'number', example: 2500.00 },
+        successfulBillsCount: { type: 'number', example: 15 }
+      }
+    }
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   getAllTimeSavings(@GetUser('userId') userId: string) {
     return this.billService.getAllTimeSavings(userId);
   }
 
   @Get('savings/by-category')
-  @ApiOperation({ summary: 'Get savings grouped by category with optional month/year filter' })
+  @ApiOperation({ 
+    summary: 'Get savings grouped by provider with optional month/year filter',
+    description: 'Groups savings by provider email, calculating (actualAmount - negotiatedAmount) for each'
+  })
   @ApiQuery({ name: 'month', required: false, type: Number, example: 12, description: 'Month (1-12)' })
   @ApiQuery({ name: 'year', required: false, type: Number, example: 2024, description: 'Year' })
-  @ApiResponse({ status: 200, description: 'Savings by category with amounts and percentages' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Savings by provider with amounts and percentages',
+    schema: {
+      type: 'object',
+      properties: {
+        period: { 
+          oneOf: [
+            { type: 'string', example: 'all-time' },
+            { type: 'object', properties: { month: { type: 'number' }, year: { type: 'number' } } }
+          ]
+        },
+        totalSavings: { type: 'number', example: 1200.00 },
+        providers: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              providerEmail: { type: 'string', example: 'support@comcast.com' },
+              providerName: { type: 'string', example: 'Comcast' },
+              savingsAmount: { type: 'number', example: 450.00 },
+              percentage: { type: 'number', example: 37.50 }
+            }
+          }
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   getSavingsByCategory(
     @GetUser('userId') userId: string,
@@ -252,7 +310,7 @@ export class BillController {
   @Patch(':id')
   @ApiOperation({ 
     summary: 'Update a bill by ID (can also update FCM token)',
-    description: 'Update bill details. If status changes, a push notification will be sent. Can also update FCM token by including it in the request body.'
+    description: 'Update bill details including actualAmount and negotiatedAmount. If status changes, a push notification will be sent. Can also update FCM token by including it in the request body.'
   })
   @ApiBody({
     schema: {
@@ -271,6 +329,8 @@ export class BillController {
           enum: ['draft', 'sent', 'negotiating', 'successful', 'failed', 'cancelled']
         },
         sentAt: { type: 'string', format: 'date-time' },
+        actualAmount: { type: 'integer', example: 150, description: 'Original bill amount before negotiation' },
+        negotiatedAmount: { type: 'integer', example: 120, description: 'Negotiated bill amount after successful negotiation' },
         fcmToken: { 
           type: 'string', 
           example: 'fZj8X9kS3hY:APA91bF7Z...',

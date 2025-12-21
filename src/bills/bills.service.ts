@@ -39,6 +39,8 @@ export class BillService {
         emailSubject: dto.emailSubject,
         emailBody: dto.emailBody,
         status: dto.status || 'draft',
+        actualAmount: dto.actualAmount,
+        negotiatedAmount: dto.negotiatedAmount,
       }
     });
     
@@ -115,6 +117,8 @@ export class BillService {
         emailMessageId: dto.emailMessageId ?? bill.emailMessageId,
         status: dto.status ?? bill.status,
         sentAt: dto.sentAt ?? bill.sentAt,
+        actualAmount: dto.actualAmount ?? bill.actualAmount,
+        negotiatedAmount: dto.negotiatedAmount ?? bill.negotiatedAmount,
       }
     });
 
@@ -226,6 +230,15 @@ export class BillService {
     }
   }
 
+  // ==================== SAVINGS CALCULATION HELPER ====================
+  
+  private calculateSavings(actualAmount: number | null, negotiatedAmount: number | null): number {
+    if (!actualAmount || !negotiatedAmount) {
+      return 0;
+    }
+    return actualAmount - negotiatedAmount;
+  }
+
   // ==================== NEW ENDPOINTS IMPLEMENTATION ====================
 
   async getActiveNegotiationsCount(userId: string) {
@@ -279,17 +292,18 @@ export class BillService {
           lte: endOfMonth
         }
       },
-      include: {
-        billTrackings: {
-          orderBy: { month: 'desc' },
-          take: 1
-        }
+      select: {
+        id: true,
+        actualAmount: true,
+        negotiatedAmount: true,
+        providerName: true,
+        providerEmail: true
       }
     });
 
     const totalSavings = successfulBills.reduce((sum, bill) => {
-      const latestTracking = bill.billTrackings[0];
-      return sum + (latestTracking?.amount || 0);
+      const savings = this.calculateSavings(bill.actualAmount, bill.negotiatedAmount);
+      return sum + savings;
     }, 0);
 
     return {
@@ -306,16 +320,18 @@ export class BillService {
         userId,
         status: 'successful'
       },
-      include: {
-        billTrackings: true
+      select: {
+        id: true,
+        actualAmount: true,
+        negotiatedAmount: true,
+        providerName: true,
+        providerEmail: true
       }
     });
 
     const totalSavings = successfulBills.reduce((sum, bill) => {
-      const billTotalSavings = bill.billTrackings.reduce((trackingSum, tracking) => {
-        return trackingSum + (tracking.amount || 0);
-      }, 0);
-      return sum + billTotalSavings;
+      const savings = this.calculateSavings(bill.actualAmount, bill.negotiatedAmount);
+      return sum + savings;
     }, 0);
 
     return {
@@ -342,24 +358,23 @@ export class BillService {
 
     const successfulBills = await this.prisma.bill.findMany({
       where: whereClause,
-      include: {
-        billTrackings: month && year ? {
-          where: {
-            month: new Date(year, month - 1, 1)
-          }
-        } : true
+      select: {
+        id: true,
+        providerEmail: true,
+        providerName: true,
+        actualAmount: true,
+        negotiatedAmount: true
       }
     });
 
+    // Group by provider (category in this context means provider)
     const providerMap = new Map<string, { email: string; name: string | null; savings: number }>();
     
     successfulBills.forEach(bill => {
       const key = bill.providerEmail;
       const existing = providerMap.get(key);
       
-      const savings = bill.billTrackings.reduce((sum, tracking) => {
-        return sum + (tracking.amount || 0);
-      }, 0);
+      const savings = this.calculateSavings(bill.actualAmount, bill.negotiatedAmount);
 
       if (existing) {
         existing.savings += savings;

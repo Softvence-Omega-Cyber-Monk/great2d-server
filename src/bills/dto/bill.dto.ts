@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
-import { IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { IsEmail, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 export enum BillCategory {
     INTERNET = 'internet',
@@ -54,6 +54,18 @@ export class CreateBillDto {
     @IsEnum(BillStatus)
     @IsOptional()
     status?: BillStatus;
+
+    @ApiPropertyOptional({ example: 150, description: 'Original bill amount before negotiation' })
+    @IsInt()
+    @Min(0)
+    @IsOptional()
+    actualAmount?: number;
+
+    @ApiPropertyOptional({ example: 120, description: 'Negotiated bill amount after successful negotiation' })
+    @IsInt()
+    @Min(0)
+    @IsOptional()
+    negotiatedAmount?: number;
 }
 
 export class UpdateBillDto extends PartialType(CreateBillDto) {
@@ -70,6 +82,18 @@ export class UpdateBillDto extends PartialType(CreateBillDto) {
     @ApiPropertyOptional({ example: '2024-01-15T10:30:00Z' })
     @IsOptional()
     sentAt?: Date;
+
+    @ApiPropertyOptional({ example: 150, description: 'Original bill amount before negotiation' })
+    @IsInt()
+    @Min(0)
+    @IsOptional()
+    actualAmount?: number;
+
+    @ApiPropertyOptional({ example: 120, description: 'Negotiated bill amount after successful negotiation' })
+    @IsInt()
+    @Min(0)
+    @IsOptional()
+    negotiatedAmount?: number;
 }
 
 export class SetSavingsGoalDto {
