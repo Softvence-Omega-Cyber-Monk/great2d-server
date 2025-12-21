@@ -16,8 +16,6 @@ import {
   CreateBillDto, 
   UpdateBillDto, 
   SetSavingsGoalDto,
-  CreateProviderDto,
-  UpdateProviderDto,
   MarkBillAsSentDto
 } from './dto/bill.dto';
 import { 
@@ -32,74 +30,6 @@ import {
 import { JwtGuard } from 'src/auth/guards/jwt.guards';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
 
-// ==================== PROVIDERS CONTROLLER ====================
-@ApiTags('Providers')
-@Controller('providers')
-@UseGuards(JwtGuard)
-@ApiBearerAuth('JWT-auth')
-export class ProviderController {
-  constructor(private readonly billService: BillService) {}
-
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new provider (Admin/User can add global providers)' })
-  @ApiResponse({ status: 201, description: 'Provider created successfully' })
-  @ApiResponse({ status: 409, description: 'Provider already exists' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  create(@Body() dto: CreateProviderDto) {
-    return this.billService.createProvider(dto);
-  }
-
-  @Get()
-  @ApiOperation({ summary: 'Get all providers' })
-  @ApiResponse({ status: 200, description: 'List of all providers' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  getAll() {
-    return this.billService.getAllProviders();
-  }
-
-  @Get('search')
-  @ApiOperation({ summary: 'Search providers by name' })
-  @ApiQuery({ name: 'q', required: true, description: 'Search query' })
-  @ApiResponse({ status: 200, description: 'Search results' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  search(@Query('q') query: string) {
-    return this.billService.searchProviders(query);
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Get provider by ID' })
-  @ApiResponse({ status: 200, description: 'Provider details' })
-  @ApiResponse({ status: 404, description: 'Provider not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  getById(@Param('id') id: string) {
-    return this.billService.getProviderById(id);
-  }
-
-  @Patch(':id')
-  @ApiOperation({ summary: 'Update a provider by ID' })
-  @ApiResponse({ status: 200, description: 'Provider updated successfully' })
-  @ApiResponse({ status: 404, description: 'Provider not found' })
-  @ApiResponse({ status: 409, description: 'Provider name already exists' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdateProviderDto,
-  ) {
-    return this.billService.updateProvider(id, dto);
-  }
-
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete a provider by ID' })
-  @ApiResponse({ status: 200, description: 'Provider deleted successfully' })
-  @ApiResponse({ status: 404, description: 'Provider not found' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Provider has existing bills' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  delete(@Param('id') id: string) {
-    return this.billService.deleteProvider(id);
-  }
-}
-
 // ==================== BILLS CONTROLLER ====================
 @ApiTags('Bills')
 @Controller('bills')
@@ -112,7 +42,6 @@ export class BillController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new bill negotiation' })
   @ApiResponse({ status: 201, description: 'Bill created successfully' })
-  @ApiResponse({ status: 404, description: 'Provider not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   create(
     @Body() dto: CreateBillDto,
@@ -123,7 +52,7 @@ export class BillController {
 
   @Get()
   @ApiOperation({ summary: 'Get all bills for logged-in user' })
-  @ApiResponse({ status: 200, description: 'List of all bills with provider details' })
+  @ApiResponse({ status: 200, description: 'List of all bills' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   getAll(@GetUser('userId') userId: string) {
     return this.billService.getAllBills(userId);
@@ -225,7 +154,7 @@ export class BillController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get bill by ID with tracking history' })
-  @ApiResponse({ status: 200, description: 'Single bill details with provider and tracking' })
+  @ApiResponse({ status: 200, description: 'Single bill details with tracking' })
   @ApiResponse({ status: 404, description: 'Bill not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })

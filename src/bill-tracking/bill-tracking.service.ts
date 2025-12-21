@@ -16,8 +16,7 @@ export class BillTrackingService {
   async create(userId: string, createDto: CreateBillTrackingDto) {
     // Verify bill exists and belongs to user
     const bill = await this.prisma.bill.findFirst({
-      where: { id: createDto.billId, userId },
-      include: { provider: true }
+      where: { id: createDto.billId, userId }
     });
 
     if (!bill) {
@@ -41,9 +40,9 @@ export class BillTrackingService {
       throw new BadRequestException('Bill tracking already exists for this month');
     }
 
-    // Get bill name and category from the bill or use provider name as fallback
-    const billName = bill.accountDetails || bill.provider?.providerName || 'Unnamed Bill';
-    const provider = bill.provider?.providerName || 'Unknown Provider';
+    // Get bill name from bill details or use provider name as fallback
+    const billName = bill.accountDetails || bill.providerName || 'Unnamed Bill';
+    const provider = bill.providerName || bill.providerEmail || 'Unknown Provider';
 
     return this.prisma.billTracking.create({
       data: {
@@ -82,11 +81,7 @@ export class BillTrackingService {
         { dueDate: 'asc' }
       ],
       include: {
-        bill: {
-          include: {
-            provider: true
-          }
-        }
+        bill: true
       }
     });
   }
@@ -98,11 +93,7 @@ export class BillTrackingService {
     const tracking = await this.prisma.billTracking.findFirst({
       where: { id, userId },
       include: {
-        bill: {
-          include: {
-            provider: true
-          }
-        }
+        bill: true
       }
     });
 
@@ -208,11 +199,10 @@ export class BillTrackingService {
     const now = new Date();
     const currentMonth = this.getMonthStart(now);
 
-    // Get all active bills with their providers
+    // Get all active bills
     const bills = await this.prisma.bill.findMany({
       include: {
-        user: true,
-        provider: true
+        user: true
       }
     });
 
@@ -232,8 +222,8 @@ export class BillTrackingService {
         const dueDate = new Date(currentMonth);
         dueDate.setDate(15);
 
-        const billName = bill.accountDetails || bill.provider?.providerName || 'Unnamed Bill';
-        const providerName = bill.provider?.providerName || 'Unknown Provider';
+        const billName = bill.accountDetails || bill.providerName || 'Unnamed Bill';
+        const providerName = bill.providerName || bill.providerEmail || 'Unknown Provider';
         const amount = 0; // Default amount, should be updated by user
 
         await this.prisma.billTracking.create({

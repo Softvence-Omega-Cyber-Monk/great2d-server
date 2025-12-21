@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from "class-validator";
+import { IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 export enum BillCategory {
     INTERNET = 'internet',
@@ -20,10 +20,15 @@ export enum BillStatus {
 }
 
 export class CreateBillDto {
-    @ApiProperty({ example: 'provider-uuid-here' })
-    @IsUUID()
+    @ApiProperty({ example: 'support@comcast.com' })
+    @IsEmail()
     @IsNotEmpty()
-    providerId: string;
+    providerEmail: string;
+
+    @ApiPropertyOptional({ example: 'Comcast' })
+    @IsString()
+    @IsOptional()
+    providerName?: string;
 
     @ApiPropertyOptional({ example: 'Account #12345' })
     @IsString()
@@ -73,26 +78,6 @@ export class SetSavingsGoalDto {
     @Min(0)
     goalAmount: number;
 }
-
-// Provider DTOs - Global providers (not user-specific)
-export class CreateProviderDto {
-    @ApiProperty({ example: 'Comcast' })
-    @IsString()
-    @IsNotEmpty()
-    providerName: string;
-
-    @ApiPropertyOptional({ example: 'support@comcast.com' })
-    @IsString()
-    @IsOptional()
-    contactEmail?: string;
-
-    @ApiPropertyOptional({ example: '1-800-COMCAST' })
-    @IsString()
-    @IsOptional()
-    contactPhone?: string;
-}
-
-export class UpdateProviderDto extends PartialType(CreateProviderDto) {}
 
 export class MarkBillAsSentDto {
     @ApiPropertyOptional({ example: 'thread_abc123' })

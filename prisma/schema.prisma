@@ -37,41 +37,31 @@ model User {
   paypalPayments            PayPalPayment[]
 }
 
-// New Provider model
-model Provider {
-  providerId                String   @id @default(uuid())
-  providerName              String
-  contactEmail              String?
-  contactPhone              String?
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
-  bills                     Bill[]
-
-  @@map("providers")
-}
-
 model Bill {
   id                        String        @id @default(uuid())
   userId                    String
-  providerId                String
+  
+  // Provider information stored directly in bill
+  providerEmail             String
+  providerName              String?
+  
   accountDetails            String?       // Account number or other identifying details
   negotiationRecommendation String?       // AI-generated recommendation
   emailSubject              String?
   emailBody                 String?       @db.Text
   emailThreadId             String?       // Gmail thread ID
   emailMessageId            String?       // Gmail message ID
-  status                    BillStatus
+  status                    BillStatus    @default(draft)
   sentAt                    DateTime?     // When negotiation email was sent
   createdAt                 DateTime      @default(now())
   updatedAt                 DateTime      @updatedAt
   
   //Relations
   user                      User          @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  provider                  Provider      @relation(fields: [providerId], references: [providerId], onDelete: Cascade)
   billTrackings             BillTracking[]
 
   @@index([userId])
-  @@index([providerId])
+  @@index([providerEmail])
   @@index([status])
   @@map("bills")
 }
