@@ -4,8 +4,8 @@ import {
   IsEmail,
   IsOptional,
   IsString,
-  IsUrl,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class UpdateUserDto {
   @ApiProperty({ required: false, example: 'John Doe' })
@@ -18,25 +18,32 @@ export class UpdateUserDto {
   @IsOptional()
   phone?: string;
 
-  @ApiProperty({
-    required: false,
-    example: 'https://example.com/profile.jpg',
-  })
-  @IsUrl()
-  @IsOptional()
-  profilePictureUrl?: string;
-
   @ApiProperty({ required: false, example: true })
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   @IsOptional()
   isDarkMode?: boolean;
 
   @ApiProperty({ required: false, example: true })
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   @IsOptional()
   isNotificationsEnabled?: boolean;
 
   @ApiProperty({ required: false, example: false })
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   @IsOptional()
   isUsingBiometrics?: boolean;

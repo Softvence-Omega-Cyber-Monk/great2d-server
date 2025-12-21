@@ -7,7 +7,11 @@ import {
   Delete,
   UseGuards,
   Post,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
 import { UpdateUserDto, UserResponseDto } from './dto/user.dto';
 import {
@@ -16,12 +20,15 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { JwtGuard } from 'src/auth/guards/jwt.guards';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { UserRole } from 'generated/prisma';
+import { ParseFormDataPipe } from 'src/pipes/parse-boolean.pipe';
 
 @ApiTags('Users')
 @Controller('users')
@@ -43,18 +50,55 @@ export class UsersController {
   }
 
   @Patch('me')
-  @ApiOperation({ summary: 'Update current logged-in user profile' })
+  @UseInterceptors(FileInterceptor('profilePicture'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Update current logged-in user profile with optional image upload' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        fullName: { type: 'string', example: 'John Doe' },
+        phone: { type: 'string', example: '+1234567890' },
+        isDarkMode: { type: 'boolean', example: true },
+        isNotificationsEnabled: { type: 'boolean', example: true },
+        isUsingBiometrics: { type: 'boolean', example: false },
+        profilePicture: {
+          type: 'string',
+          format: 'binary',
+          description: 'Profile picture image file (jpg, jpeg, png, webp)',
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 200,
     description: 'User profile updated successfully',
     type: UserResponseDto,
   })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid file type' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  updateCurrentUser(
+  async updateCurrentUser(
     @GetUser('userId') userId: string,
-    @Body() updateUserDto: UpdateUserDto,
+    @Body(new ParseFormDataPipe()) updateUserDto: UpdateUserDto,
+    @UploadedFile() file?: any,
   ) {
-    return this.usersService.updateMe(userId, updateUserDto);
+    // Validate file type if file is uploaded
+    if (file) {
+      const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedMimeTypes.includes(file.mimetype)) {
+        throw new BadRequestException(
+          'Invalid file type. Only JPEG, JPG, PNG, and WEBP images are allowed.',
+        );
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        throw new BadRequestException('File size too large. Maximum size is 5MB.');
+      }
+    }
+
+    return this.usersService.updateMe(userId, updateUserDto, file);
   }
 
   @Delete('me')
@@ -107,21 +151,58 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update user by ID' })
+  @UseInterceptors(FileInterceptor('profilePicture'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Update user by ID with optional image upload' })
   @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        fullName: { type: 'string', example: 'John Doe' },
+        phone: { type: 'string', example: '+1234567890' },
+        isDarkMode: { type: 'boolean', example: true },
+        isNotificationsEnabled: { type: 'boolean', example: true },
+        isUsingBiometrics: { type: 'boolean', example: false },
+        profilePicture: {
+          type: 'string',
+          format: 'binary',
+          description: 'Profile picture image file (jpg, jpeg, png, webp)',
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 200,
     description: 'User updated successfully',
     type: UserResponseDto,
   })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid file type' })
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Can only update own profile' })
-  update(
+  async update(
     @Param('id') id: string,
     @GetUser('userId') requestUserId: string,
-    @Body() updateUserDto: UpdateUserDto,
+    @Body(new ParseFormDataPipe()) updateUserDto: UpdateUserDto,
+    @UploadedFile() file?: any,
   ) {
-    return this.usersService.update(id, requestUserId, updateUserDto);
+    // Validate file type if file is uploaded
+    if (file) {
+      const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedMimeTypes.includes(file.mimetype)) {
+        throw new BadRequestException(
+          'Invalid file type. Only JPEG, JPG, PNG, and WEBP images are allowed.',
+        );
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        throw new BadRequestException('File size too large. Maximum size is 5MB.');
+      }
+    }
+
+    return this.usersService.update(id, requestUserId, updateUserDto, file);
   }
 
   @Delete(':id')

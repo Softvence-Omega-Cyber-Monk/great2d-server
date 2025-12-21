@@ -4,11 +4,15 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { UpdateUserDto } from './dto/user.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cloudinaryService: CloudinaryService,
+  ) {}
 
   async findAll() {
     return this.prisma.user.findMany({
@@ -142,7 +146,7 @@ export class UsersService {
     return user;
   }
 
-  async updateMe(userId: string, dto: UpdateUserDto) {
+  async updateMe(userId: string, dto: UpdateUserDto, file?: any) {
     // Check if user exists and is not deleted
     const user = await this.prisma.user.findUnique({
       where: { userId },
@@ -152,10 +156,26 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    let profilePictureUrl = user.profilePictureUrl;
+
+    // Handle image upload
+    if (file) {
+      // Delete old image if exists
+      if (user.profilePictureUrl) {
+        await this.cloudinaryService.deleteImage(user.profilePictureUrl);
+      }
+
+      // Upload new image
+      profilePictureUrl = await this.cloudinaryService.uploadImage(file, 'user-profiles');
+    }
+
     // Update user profile
     return this.prisma.user.update({
       where: { userId },
-      data: dto,
+      data: {
+        ...dto,
+        profilePictureUrl,
+      },
       select: {
         userId: true,
         email: true,
@@ -204,6 +224,11 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    // Delete profile picture from Cloudinary if exists
+    if (user.profilePictureUrl) {
+      await this.cloudinaryService.deleteImage(user.profilePictureUrl);
+    }
+
     // Soft delete
     await this.prisma.user.update({
       where: { userId },
@@ -213,7 +238,7 @@ export class UsersService {
     return { message: 'Your account has been deleted successfully' };
   }
 
-  async update(userId: string, requestUserId: string, dto: UpdateUserDto) {
+  async update(userId: string, requestUserId: string, dto: UpdateUserDto, file?: any) {
     // Check if user exists
     const user = await this.prisma.user.findUnique({
       where: { userId },
@@ -228,9 +253,25 @@ export class UsersService {
       throw new ForbiddenException('You can only update your own profile');
     }
 
+    let profilePictureUrl = user.profilePictureUrl;
+
+    // Handle image upload
+    if (file) {
+      // Delete old image if exists
+      if (user.profilePictureUrl) {
+        await this.cloudinaryService.deleteImage(user.profilePictureUrl);
+      }
+
+      // Upload new image
+      profilePictureUrl = await this.cloudinaryService.uploadImage(file, 'user-profiles');
+    }
+
     return this.prisma.user.update({
       where: { userId },
-      data: dto,
+      data: {
+        ...dto,
+        profilePictureUrl,
+      },
       select: {
         userId: true,
         email: true,
@@ -260,6 +301,11 @@ export class UsersService {
     // Users can only delete their own account
     if (userId !== requestUserId) {
       throw new ForbiddenException('You can only delete your own account');
+    }
+
+    // Delete profile picture from Cloudinary if exists
+    if (user.profilePictureUrl) {
+      await this.cloudinaryService.deleteImage(user.profilePictureUrl);
     }
 
     // Soft delete
@@ -302,6 +348,11 @@ export class UsersService {
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    // Delete profile picture from Cloudinary if exists
+    if (user.profilePictureUrl) {
+      await this.cloudinaryService.deleteImage(user.profilePictureUrl);
     }
 
     // Permanently delete user (cascade will delete related data)
