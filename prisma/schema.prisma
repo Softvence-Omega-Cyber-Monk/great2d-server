@@ -72,7 +72,7 @@ model Bill {
   // Provider information stored directly in bill
   providerEmail             String
   providerName              String?
-  category                  String        @default("other")  // Changed from enum to String
+  category                  String?        @default("other")  // Changed from enum to String
   
   accountDetails            String?       // Account number or other identifying details
   negotiationRecommendation String?       // AI-generated recommendation
@@ -169,7 +169,7 @@ model BillTracking {
   billId        String
   month         DateTime            // Stores the first day of the month (e.g., 2024-01-01)
   billName      String
-  category      String              // Changed from enum to String
+  category      String?              // Changed from enum to String
   provider      String
   amount        Float
   dueDate       DateTime?           // Made optional to fix null constraint error
