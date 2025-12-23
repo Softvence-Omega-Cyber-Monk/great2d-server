@@ -95,6 +95,7 @@ model Bill {
   billTrackings             BillTracking[]
   notifications             Notification[]
 
+  //you know what
   @@index([userId])
   @@index([providerEmail])
   @@index([status])
