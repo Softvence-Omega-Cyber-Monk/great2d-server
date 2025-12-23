@@ -49,7 +49,7 @@ export class BillTrackingService {
         billId: createDto.billId,
         month: monthDate,
         billName: billName,
-        category: 'other' as any, // Default category
+        category: bill.category || 'other',
         provider: provider,
         amount: createDto.amount,
         dueDate: new Date(createDto.dueDate),
@@ -231,7 +231,7 @@ export class BillTrackingService {
             billId: bill.id,
             month: currentMonth,
             billName: billName,
-            category: 'other' as any, // Default category
+            category: bill.category || 'other',
             provider: providerName,
             amount: amount,
             dueDate: dueDate,

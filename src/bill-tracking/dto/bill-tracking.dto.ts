@@ -2,7 +2,7 @@
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsString, IsNumber, IsDateString, IsOptional, IsUUID } from 'class-validator';
-import { BillCategory, BillPaymentStatus } from 'generated/prisma';
+import { BillPaymentStatus } from 'generated/prisma';
 
 export class CreateBillTrackingDto {
   @ApiProperty({
@@ -100,10 +100,9 @@ export class BillTrackingResponseDto {
 
   @ApiProperty({
     description: 'Category of the bill',
-    enum: BillCategory,
-    example: BillCategory.internet
+    example: 'internet'
   })
-  category: BillCategory;
+  category: string;
 
   @ApiProperty({
     description: 'Service provider name',

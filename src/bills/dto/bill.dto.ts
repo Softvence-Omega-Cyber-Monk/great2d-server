@@ -1,23 +1,7 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
-import { IsEmail, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { IsEmail, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
-export enum BillCategory {
-    INTERNET = 'internet',
-    ELECTRICITY = 'electricity',
-    WATER = 'water',
-    MOBILE = 'mobile',
-    GAS = 'gas',
-    OTHER = 'other'
-}
-
-export enum BillStatus {
-    DRAFT = 'draft',
-    SENT = 'sent',
-    NEGOTIATING = 'negotiating',
-    SUCCESSFUL = 'successful',
-    FAILED = 'failed',
-    CANCELLED = 'cancelled'
-}
+// Removed enums - now just using strings
 
 export class CreateBillDto {
     @ApiProperty({ example: 'support@comcast.com' })
@@ -31,13 +15,13 @@ export class CreateBillDto {
     providerName?: string;
 
     @ApiProperty({ 
-        example: BillCategory.INTERNET, 
-        enum: BillCategory,
-        default: BillCategory.OTHER 
+        example: 'internet',
+        description: 'Bill category (internet, electricity, water, mobile, gas, tv, streaming, insurance, other, etc.)',
+        default: 'other'
     })
-    @IsEnum(BillCategory)
+    @IsString()
     @IsOptional()
-    category?: BillCategory;
+    category?: string;
 
     @ApiPropertyOptional({ example: 'Account #12345' })
     @IsString()
@@ -59,10 +43,14 @@ export class CreateBillDto {
     @IsOptional()
     emailBody?: string;
 
-    @ApiProperty({ example: BillStatus.DRAFT, enum: BillStatus, default: BillStatus.DRAFT })
-    @IsEnum(BillStatus)
+    @ApiProperty({ 
+        example: 'draft',
+        description: 'Bill status (draft, sent, negotiating, successful, failed, cancelled)',
+        default: 'draft'
+    })
+    @IsString()
     @IsOptional()
-    status?: BillStatus;
+    status?: string;
 
     @ApiPropertyOptional({ example: 150, description: 'Original bill amount before negotiation' })
     @IsInt()
@@ -93,13 +81,13 @@ export class UpdateBillDto extends PartialType(CreateBillDto) {
     sentAt?: Date;
 
     @ApiProperty({ 
-        example: BillCategory.INTERNET, 
-        enum: BillCategory,
+        example: 'internet',
+        description: 'Bill category (internet, electricity, water, mobile, gas, tv, streaming, insurance, other, etc.)',
         required: false
     })
-    @IsEnum(BillCategory)
+    @IsString()
     @IsOptional()
-    category?: BillCategory;
+    category?: string;
 
     @ApiPropertyOptional({ example: 150, description: 'Original bill amount before negotiation' })
     @IsInt()
@@ -141,4 +129,49 @@ export class UpdateFCMTokenDto {
     @IsString()
     @IsNotEmpty()
     fcmToken: string;
+}
+
+// New DTO for public status update (no authentication required)
+export class PublicUpdateStatusDto {
+    @ApiProperty({ 
+        example: 'user-uuid-here',
+        description: 'User ID who owns the bill'
+    })
+    @IsString()
+    @IsNotEmpty()
+    userId: string;
+
+    @ApiProperty({ 
+        example: 'bill-uuid-here',
+        description: 'Bill ID to update'
+    })
+    @IsString()
+    @IsNotEmpty()
+    billId: string;
+
+    @ApiProperty({ 
+        example: 'negotiating',
+        description: 'New status (draft, sent, negotiating, successful, failed, cancelled)'
+    })
+    @IsString()
+    @IsNotEmpty()
+    status: string;
+
+    @ApiPropertyOptional({ 
+        example: 150,
+        description: 'Original bill amount (optional)'
+    })
+    @IsInt()
+    @Min(0)
+    @IsOptional()
+    actualAmount?: number;
+
+    @ApiPropertyOptional({ 
+        example: 120,
+        description: 'Negotiated bill amount (optional)'
+    })
+    @IsInt()
+    @Min(0)
+    @IsOptional()
+    negotiatedAmount?: number;
 }

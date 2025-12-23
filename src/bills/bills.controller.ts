@@ -16,7 +16,8 @@ import {
   CreateBillDto, 
   UpdateBillDto, 
   SetSavingsGoalDto,
-  MarkBillAsSentDto
+  MarkBillAsSentDto,
+  PublicUpdateStatusDto
 } from './dto/bill.dto';
 import { 
   ApiTags, 
@@ -34,8 +35,6 @@ import { PrismaService } from 'src/prisma/prisma.service';
 // ==================== BILLS CONTROLLER ====================
 @ApiTags('Bills')
 @Controller('bills')
-@UseGuards(JwtGuard)
-@ApiBearerAuth('JWT-auth')
 export class BillController {
   constructor(
     private readonly billService: BillService,
@@ -44,6 +43,8 @@ export class BillController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Create a new bill negotiation' })
   @ApiResponse({ status: 201, description: 'Bill created successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -55,6 +56,8 @@ export class BillController {
   }
 
   @Get()
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get all bills for logged-in user' })
   @ApiResponse({ status: 200, description: 'List of all bills' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -63,8 +66,10 @@ export class BillController {
   }
 
   @Get('status/:status')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get bills by status' })
-  @ApiParam({ name: 'status', enum: ['draft', 'sent', 'negotiating', 'successful', 'failed', 'cancelled'] })
+  @ApiParam({ name: 'status', description: 'Bill status (draft, sent, negotiating, successful, failed, cancelled)' })
   @ApiResponse({ status: 200, description: 'Bills filtered by status' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   getByStatus(
@@ -75,6 +80,8 @@ export class BillController {
   }
 
   @Get('dashboard/summary')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get dashboard summary' })
   @ApiResponse({ status: 200, description: 'Dashboard summary with counts and recent activity' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -83,6 +90,8 @@ export class BillController {
   }
 
   @Get('stats')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get bills statistics' })
   @ApiResponse({ status: 200, description: 'Bills stats by status' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -91,6 +100,8 @@ export class BillController {
   }
 
   @Get('recent')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get recent bill activity' })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @ApiResponse({ status: 200, description: 'Recent bill activity' })
@@ -105,6 +116,8 @@ export class BillController {
   // ==================== NEW ENDPOINTS ====================
 
   @Get('negotiations/active-count')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get count of active negotiations (bills with status: negotiating)' })
   @ApiResponse({ status: 200, description: 'Count of active negotiations' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -113,6 +126,8 @@ export class BillController {
   }
 
   @Get('negotiations/recent')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get recent negotiations (bills with status: negotiating, successful, sent)' })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @ApiResponse({ status: 200, description: 'List of recent negotiation bills' })
@@ -125,6 +140,8 @@ export class BillController {
   }
 
   @Get('savings/this-month')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Get sum of savings for bills that became successful this month',
     description: 'Calculates savings as (actualAmount - negotiatedAmount) for all successful bills updated this month'
@@ -148,6 +165,8 @@ export class BillController {
   }
 
   @Get('savings/all-time')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Get all-time total savings from successful bills',
     description: 'Calculates total savings as sum of (actualAmount - negotiatedAmount) for all successful bills'
@@ -169,6 +188,8 @@ export class BillController {
   }
 
   @Get('savings/by-category')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Get savings grouped by provider with optional month/year filter',
     description: 'Groups savings by provider email, calculating (actualAmount - negotiatedAmount) for each'
@@ -215,6 +236,8 @@ export class BillController {
   // ==================== FIREBASE NOTIFICATION ENDPOINTS ====================
 
   @Get('notifications/all')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Get FCM device token for current user',
     description: 'Get the registered FCM token for the logged-in user'
@@ -262,6 +285,8 @@ export class BillController {
   }
 
   @Get('notifications/status')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Check if current user device is registered for notifications',
     description: 'Check if the current user has a registered FCM token'
@@ -292,9 +317,33 @@ export class BillController {
     };
   }
 
+  // ==================== PUBLIC STATUS UPDATE (NO AUTH REQUIRED) ====================
+
+  @Post('status/public-update')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Update bill status without authentication (PUBLIC)',
+    description: 'Anyone can update a bill status by providing userId and billId. Use this for webhook integrations or external services.'
+  })
+  @ApiBody({ type: PublicUpdateStatusDto })
+  @ApiResponse({ status: 200, description: 'Bill status updated successfully, notification sent' })
+  @ApiResponse({ status: 404, description: 'Bill not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - userId does not match bill owner' })
+  publicUpdateStatus(@Body() dto: PublicUpdateStatusDto) {
+    return this.billService.publicUpdateBillStatus(
+      dto.userId, 
+      dto.billId, 
+      dto.status,
+      dto.actualAmount,
+      dto.negotiatedAmount
+    );
+  }
+
   // ==================== EXISTING ENDPOINTS ====================
 
   @Get(':id')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get bill by ID with tracking history' })
   @ApiResponse({ status: 200, description: 'Single bill details with tracking' })
   @ApiResponse({ status: 404, description: 'Bill not found' })
@@ -308,6 +357,8 @@ export class BillController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Update a bill by ID (can also update FCM token)',
     description: 'Update bill details including actualAmount and negotiatedAmount. If status changes, a push notification will be sent. Can also update FCM token by including it in the request body.'
@@ -319,6 +370,7 @@ export class BillController {
         providerEmail: { type: 'string', example: 'support@provider.com' },
         providerName: { type: 'string', example: 'Provider Name' },
         accountDetails: { type: 'string', example: 'Account #12345' },
+        category: { type: 'string', example: 'internet' },
         negotiationRecommendation: { type: 'string' },
         emailSubject: { type: 'string' },
         emailBody: { type: 'string' },
@@ -326,7 +378,8 @@ export class BillController {
         emailMessageId: { type: 'string' },
         status: { 
           type: 'string', 
-          enum: ['draft', 'sent', 'negotiating', 'successful', 'failed', 'cancelled']
+          example: 'draft',
+          description: 'Status (draft, sent, negotiating, successful, failed, cancelled)'
         },
         sentAt: { type: 'string', format: 'date-time' },
         actualAmount: { type: 'integer', example: 150, description: 'Original bill amount before negotiation' },
@@ -362,6 +415,8 @@ export class BillController {
 
   @Patch(':id/mark-sent')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Mark bill negotiation email as sent (triggers notification)' })
   @ApiBody({ type: MarkBillAsSentDto })
   @ApiResponse({ status: 200, description: 'Bill marked as sent, notification sent' })
@@ -383,14 +438,17 @@ export class BillController {
 
   @Patch(':id/status')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update bill status (triggers notification)' })
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Update bill status (triggers notification) - AUTHENTICATED' })
   @ApiBody({ 
     schema: { 
       type: 'object', 
       properties: { 
         status: { 
           type: 'string', 
-          enum: ['draft', 'sent', 'negotiating', 'successful', 'failed', 'cancelled'] 
+          example: 'draft',
+          description: 'Status (draft, sent, negotiating, successful, failed, cancelled)'
         } 
       } 
     } 
@@ -408,6 +466,8 @@ export class BillController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Delete a bill by ID' })
   @ApiResponse({ status: 200, description: 'Bill deleted successfully' })
   @ApiResponse({ status: 404, description: 'Bill not found' })
@@ -421,6 +481,8 @@ export class BillController {
   }
 
   @Post('goals/monthly')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Set monthly savings goal' })
   @ApiResponse({ status: 200, description: 'Savings goal set successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -432,6 +494,8 @@ export class BillController {
   }
 
   @Get('goals/monthly')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get current monthly savings goal' })
   @ApiResponse({ status: 200, description: 'Current savings goal' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })

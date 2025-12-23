@@ -72,7 +72,7 @@ model Bill {
   // Provider information stored directly in bill
   providerEmail             String
   providerName              String?
-  category                  BillCategory  @default(other)
+  category                  String        @default("other")  // Changed from enum to String
   
   accountDetails            String?       // Account number or other identifying details
   negotiationRecommendation String?       // AI-generated recommendation
@@ -80,7 +80,7 @@ model Bill {
   emailBody                 String?       @db.Text
   emailThreadId             String?       // Gmail thread ID
   emailMessageId            String?       // Gmail message ID
-  status                    BillStatus    @default(draft)
+  status                    String        @default("draft")  // Changed from enum to String
   sentAt                    DateTime?
 
   actualAmount              Int?
@@ -169,10 +169,10 @@ model BillTracking {
   billId        String
   month         DateTime            // Stores the first day of the month (e.g., 2024-01-01)
   billName      String
-  category      BillCategory
+  category      String              // Changed from enum to String
   provider      String
   amount        Float
-  dueDate       DateTime
+  dueDate       DateTime?           // Made optional to fix null constraint error
   paymentStatus BillPaymentStatus   @default(due)
   paidAt        DateTime?
   userId        String
@@ -246,24 +246,6 @@ enum PayPalPaymentStatus {
 enum UserRole {
   user
   admin
-}
-
-enum BillCategory {
-  internet
-  electricity
-  water
-  mobile
-  gas
-  other
-}
-
-enum BillStatus {
-  draft          // Email not sent yet
-  sent           // Email sent, awaiting response
-  negotiating    // In active negotiation
-  successful     // Successfully negotiated
-  failed         // Negotiation failed
-  cancelled      // User cancelled
 }
 
 enum NotificationType {

@@ -67,7 +67,7 @@ export class BillService {
     return this.prisma.bill.findMany({
       where: { 
         userId,
-        status: status as any
+        status: status
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -202,7 +202,7 @@ export class BillService {
     const oldStatus = bill.status;
     const updatedBill = await this.prisma.bill.update({
       where: { id },
-      data: { status: status as any }
+      data: { status: status }
     });
 
     // Send notification
@@ -211,6 +211,52 @@ export class BillService {
     }
 
     return updatedBill;
+  }
+
+  // ==================== PUBLIC STATUS UPDATE (NO AUTH) ====================
+  
+  async publicUpdateBillStatus(
+    userId: string, 
+    billId: string, 
+    status: string,
+    actualAmount?: number,
+    negotiatedAmount?: number
+  ) {
+    const bill = await this.prisma.bill.findUnique({ 
+      where: { id: billId } 
+    });
+
+    if (!bill) {
+      throw new NotFoundException(`Bill with ID ${billId} not found`);
+    }
+
+    // Verify the userId matches the bill owner
+    if (bill.userId !== userId) {
+      throw new ForbiddenException('User ID does not match bill owner');
+    }
+
+    const oldStatus = bill.status;
+    
+    // Build update data
+    const updateData: any = { status };
+    if (actualAmount !== undefined) updateData.actualAmount = actualAmount;
+    if (negotiatedAmount !== undefined) updateData.negotiatedAmount = negotiatedAmount;
+
+    const updatedBill = await this.prisma.bill.update({
+      where: { id: billId },
+      data: updateData
+    });
+
+    // Send notification if status changed
+    if (oldStatus !== status) {
+      await this.sendStatusChangeNotification(userId, updatedBill, oldStatus);
+    }
+
+    return {
+      success: true,
+      message: 'Bill status updated successfully',
+      bill: updatedBill
+    };
   }
 
   // ==================== NOTIFICATION HELPER ====================
