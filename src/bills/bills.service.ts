@@ -34,6 +34,7 @@ export class BillService {
         userId,
         providerEmail: dto.providerEmail,
         providerName: dto.providerName,
+        category: dto.category || 'other',
         accountDetails: dto.accountDetails,
         negotiationRecommendation: dto.negotiationRecommendation,
         emailSubject: dto.emailSubject,
@@ -104,11 +105,14 @@ export class BillService {
       throw new ForbiddenException('You do not have access to this bill');
     }
 
+    const oldStatus = bill.status;
+
     const updatedBill = await this.prisma.bill.update({
       where: { id },
       data: {
         providerEmail: dto.providerEmail ?? bill.providerEmail,
         providerName: dto.providerName ?? bill.providerName,
+        category: dto.category ?? bill.category,
         accountDetails: dto.accountDetails ?? bill.accountDetails,
         negotiationRecommendation: dto.negotiationRecommendation ?? bill.negotiationRecommendation,
         emailSubject: dto.emailSubject ?? bill.emailSubject,
@@ -123,8 +127,8 @@ export class BillService {
     });
 
     // Send notification if status changed
-    if (dto.status && dto.status !== bill.status) {
-      await this.sendStatusChangeNotification(userId, updatedBill, bill.status);
+    if (dto.status && dto.status !== oldStatus) {
+      await this.sendStatusChangeNotification(userId, updatedBill, oldStatus);
     }
 
     return updatedBill;
@@ -210,23 +214,40 @@ export class BillService {
 
   private async sendStatusChangeNotification(userId: string, bill: any, oldStatus: string) {
     try {
+      // Get user with FCM token
       const user = await this.prisma.user.findUnique({
         where: { userId },
-        select: { fcmToken: true }
+        select: { 
+          fcmToken: true,
+          isNotificationsEnabled: true 
+        }
       });
 
-      if (user?.fcmToken) {
-        await this.firebaseService.sendBillStatusNotification(
-          user.fcmToken,
-          bill.providerName || bill.providerEmail,
-          oldStatus,
-          bill.status,
-          bill.id
-        );
+      // Check if user has notifications enabled and FCM token
+      if (!user?.fcmToken) {
+        console.log(`No FCM token found for user ${userId}`);
+        return;
       }
+
+      if (!user.isNotificationsEnabled) {
+        console.log(`Notifications disabled for user ${userId}`);
+        return;
+      }
+
+      // Send notification via Firebase
+      const providerName = bill.providerName || bill.providerEmail;
+      await this.firebaseService.sendBillStatusNotification(
+        user.fcmToken,
+        providerName,
+        oldStatus,
+        bill.status,
+        bill.id
+      );
+
+      console.log(`Notification sent successfully for bill ${bill.id}`);
     } catch (error) {
       // Log error but don't fail the request
-      console.error('Failed to send notification:', error.message);
+      console.error('Failed to send notification:', error);
     }
   }
 

@@ -25,6 +25,15 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   fullName?: string;
+
+  @ApiProperty({ 
+    example: 'fcm_token_here',
+    required: false,
+    description: 'Firebase Cloud Messaging token for push notifications'
+  })
+  @IsString()
+  @IsOptional()
+  fcmToken?: string;
 }
 
 export class LoginDto {
@@ -37,6 +46,15 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty()
   password: string;
+
+  @ApiProperty({ 
+    example: 'fcm_token_here',
+    required: false,
+    description: 'Firebase Cloud Messaging token for push notifications'
+  })
+  @IsString()
+  @IsOptional()
+  fcmToken?: string;
 }
 
 export class ChangePasswordDto {

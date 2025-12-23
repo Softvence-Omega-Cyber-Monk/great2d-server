@@ -30,6 +30,15 @@ export class CreateBillDto {
     @IsOptional()
     providerName?: string;
 
+    @ApiProperty({ 
+        example: BillCategory.INTERNET, 
+        enum: BillCategory,
+        default: BillCategory.OTHER 
+    })
+    @IsEnum(BillCategory)
+    @IsOptional()
+    category?: BillCategory;
+
     @ApiPropertyOptional({ example: 'Account #12345' })
     @IsString()
     @IsOptional()
@@ -82,6 +91,15 @@ export class UpdateBillDto extends PartialType(CreateBillDto) {
     @ApiPropertyOptional({ example: '2024-01-15T10:30:00Z' })
     @IsOptional()
     sentAt?: Date;
+
+    @ApiProperty({ 
+        example: BillCategory.INTERNET, 
+        enum: BillCategory,
+        required: false
+    })
+    @IsEnum(BillCategory)
+    @IsOptional()
+    category?: BillCategory;
 
     @ApiPropertyOptional({ example: 150, description: 'Original bill amount before negotiation' })
     @IsInt()

@@ -34,6 +34,7 @@ export class AuthService {
     provider: string,
     providerId: string,
     profilePictureUrl?: string,
+    fcmToken?: string,
   ) {
     // Check if user exists
     let user = await this.prisma.user.findUnique({
@@ -81,9 +82,7 @@ export class AuthService {
           password: '', // No password for social login
           role: 'user',
           profilePictureUrl,
-          // You might want to add provider and providerId fields to your schema
-          // provider,
-          // providerId,
+          fcmToken,
         },
         select: {
           userId: true,
@@ -120,11 +119,21 @@ export class AuthService {
     } else if (user.isDeleted) {
       throw new UnauthorizedException('Account has been deleted');
     } else {
-      // Update profile picture if provided and user exists
+      // Update profile picture and FCM token if provided
+      const updateData: any = {};
+      
       if (profilePictureUrl && !user.profilePictureUrl) {
+        updateData.profilePictureUrl = profilePictureUrl;
+      }
+      
+      if (fcmToken) {
+        updateData.fcmToken = fcmToken;
+      }
+
+      if (Object.keys(updateData).length > 0) {
         user = await this.prisma.user.update({
           where: { userId: user.userId },
-          data: { profilePictureUrl },
+          data: updateData,
           select: {
             userId: true,
             email: true,
@@ -176,7 +185,7 @@ export class AuthService {
     };
   }
 
-  async register(email: string, password: string, fullName?: string) {
+  async register(email: string, password: string, fullName?: string, fcmToken?: string) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
@@ -193,6 +202,7 @@ export class AuthService {
         password: hashedPassword,
         fullName,
         role: 'user',
+        fcmToken,
       },
       select: {
         userId: true,
@@ -216,7 +226,7 @@ export class AuthService {
     };
   }
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string, fcmToken?: string) {
     const user = await this.prisma.user.findUnique({
       where: { email },
       select: {
@@ -259,6 +269,14 @@ export class AuthService {
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Update FCM token if provided
+    if (fcmToken) {
+      await this.prisma.user.update({
+        where: { userId: user.userId },
+        data: { fcmToken },
+      });
     }
 
     const tokens = this.generateTokens(user.userId, user.email, user.role);

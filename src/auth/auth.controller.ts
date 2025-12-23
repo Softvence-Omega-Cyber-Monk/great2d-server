@@ -43,6 +43,7 @@ export class AuthController {
       registerDto.email,
       registerDto.password,
       registerDto.fullName,
+      registerDto.fcmToken,
     );
   }
 
@@ -54,7 +55,11 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto.email, loginDto.password);
+    return this.authService.login(
+      loginDto.email,
+      loginDto.password,
+      loginDto.fcmToken,
+    );
   }
 
   @Post('social-login')
@@ -75,6 +80,7 @@ export class AuthController {
       socialLoginDto.provider,
       socialLoginDto.providerId,
       socialLoginDto.profilePictureUrl,
+      socialLoginDto.fcmToken,
     );
   }
 

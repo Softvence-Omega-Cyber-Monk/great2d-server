@@ -49,6 +49,15 @@ export class SocialLoginDto {
   @IsString()
   @IsOptional()
   profilePictureUrl?: string;
+
+  @ApiProperty({ 
+    example: 'fcm_token_here',
+    required: false,
+    description: 'Firebase Cloud Messaging token for push notifications'
+  })
+  @IsString()
+  @IsOptional()
+  fcmToken?: string;
 }
 
 export class SocialAuthResponseDto {

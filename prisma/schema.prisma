@@ -44,6 +44,7 @@ model Bill {
   // Provider information stored directly in bill
   providerEmail             String
   providerName              String?
+  category                  BillCategory  @default(other)
   
   accountDetails            String?       // Account number or other identifying details
   negotiationRecommendation String?       // AI-generated recommendation
@@ -66,6 +67,7 @@ model Bill {
   @@index([userId])
   @@index([providerEmail])
   @@index([status])
+  @@index([category])
   @@map("bills")
 }
 
