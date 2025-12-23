@@ -11,8 +11,9 @@ import { StripeKeyModule } from './key-provider/stripe-key.module';
 import { BillTrackingModule } from './bill-tracking/bill-tracking.module';
 import { PayPalModule } from './paypal/paypal.module';
 import { FirebaseModule } from './firebase/firebase.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
-  imports: [PrismaModule, ConfigModule.forRoot({isGlobal: true}), AuthModule, UsersModule, PaymentMethodsModule, SubscriptionPlansModule, BillModule, MailModule, StripeKeyModule, BillTrackingModule, PayPalModule, FirebaseModule],
+  imports: [PrismaModule, ConfigModule.forRoot({isGlobal: true}), AuthModule, UsersModule, PaymentMethodsModule, SubscriptionPlansModule, BillModule, MailModule, StripeKeyModule, BillTrackingModule, PayPalModule, FirebaseModule, NotificationModule],
 })
 export class AppModule {}

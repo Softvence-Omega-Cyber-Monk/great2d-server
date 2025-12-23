@@ -35,6 +35,34 @@ model User {
   bills                     Bill[]
   billTrackings             BillTracking[]
   paypalPayments            PayPalPayment[]
+  notifications             Notification[]
+}
+
+model Notification {
+  id                        String              @id @default(uuid())
+  userId                    String
+  title                     String
+  body                      String
+  type                      NotificationType    @default(general)
+  isRead                    Boolean             @default(false)
+  
+  // Related entity references
+  billId                    String?
+  
+  // Additional data stored as JSON
+  data                      Json?
+  
+  createdAt                 DateTime            @default(now())
+  readAt                    DateTime?
+  
+  // Relations
+  user                      User                @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  bill                      Bill?               @relation(fields: [billId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
 }
 
 model Bill {
@@ -63,6 +91,7 @@ model Bill {
   //Relations
   user                      User          @relation(fields: [userId], references: [userId], onDelete: Cascade)
   billTrackings             BillTracking[]
+  notifications             Notification[]
 
   @@index([userId])
   @@index([providerEmail])
@@ -235,4 +264,12 @@ enum BillStatus {
   successful     // Successfully negotiated
   failed         // Negotiation failed
   cancelled      // User cancelled
+}
+
+enum NotificationType {
+  bill_status_change
+  payment_reminder
+  savings_milestone
+  general
+  system
 }

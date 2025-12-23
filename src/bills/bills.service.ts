@@ -5,17 +5,20 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { FirebaseService } from 'src/firebase/firebase.service';
+import { NotificationService } from 'src/notification/notification.service';
 import { 
   CreateBillDto, 
   UpdateBillDto, 
   SetSavingsGoalDto
 } from './dto/bill.dto';
+import { NotificationType } from 'src/notification/notification.dto';
 
 @Injectable()
 export class BillService {
   constructor(
     private prisma: PrismaService,
-    private firebaseService: FirebaseService
+    private firebaseService: FirebaseService,
+    private notificationService: NotificationService,
   ) {}
 
   // ==================== BILL METHODS ====================
@@ -223,32 +226,87 @@ export class BillService {
         }
       });
 
-      // Check if user has notifications enabled and FCM token
-      if (!user?.fcmToken) {
-        console.log(`No FCM token found for user ${userId}`);
-        return;
-      }
-
-      if (!user.isNotificationsEnabled) {
-        console.log(`Notifications disabled for user ${userId}`);
-        return;
-      }
-
-      // Send notification via Firebase
       const providerName = bill.providerName || bill.providerEmail;
-      await this.firebaseService.sendBillStatusNotification(
-        user.fcmToken,
-        providerName,
-        oldStatus,
-        bill.status,
-        bill.id
-      );
+      const { title, body } = this.getNotificationContent(providerName, oldStatus, bill.status);
 
-      console.log(`Notification sent successfully for bill ${bill.id}`);
+      // 1. Save notification to database
+      await this.notificationService.createNotification({
+        userId,
+        title,
+        body,
+        type: NotificationType.BILL_STATUS_CHANGE,
+        billId: bill.id,
+        data: {
+          oldStatus,
+          newStatus: bill.status,
+          providerName,
+          providerEmail: bill.providerEmail,
+          category: bill.category,
+        },
+      });
+
+      // 2. Send push notification if user has FCM token and notifications enabled
+      if (user?.fcmToken && user.isNotificationsEnabled) {
+        await this.firebaseService.sendBillStatusNotification(
+          user.fcmToken,
+          providerName,
+          oldStatus,
+          bill.status,
+          bill.id
+        );
+        console.log(`Push notification sent successfully for bill ${bill.id}`);
+      } else {
+        console.log(`Push notification skipped for bill ${bill.id} - No FCM token or notifications disabled`);
+      }
+
+      console.log(`Notification saved to database for bill ${bill.id}`);
     } catch (error) {
       // Log error but don't fail the request
       console.error('Failed to send notification:', error);
     }
+  }
+
+  /**
+   * Get notification content based on status change
+   */
+  private getNotificationContent(
+    providerName: string,
+    oldStatus: string,
+    newStatus: string,
+  ): { title: string; body: string } {
+    const statusMessages: Record<string, { title: string; body: string }> = {
+      draft: {
+        title: 'Bill Draft Created',
+        body: `Your negotiation draft for ${providerName} has been created.`,
+      },
+      sent: {
+        title: 'Negotiation Email Sent',
+        body: `Your negotiation email to ${providerName} has been sent successfully!`,
+      },
+      negotiating: {
+        title: 'Negotiation in Progress',
+        body: `${providerName} is reviewing your negotiation request.`,
+      },
+      successful: {
+        title: '🎉 Negotiation Successful!',
+        body: `Great news! Your negotiation with ${providerName} was successful!`,
+      },
+      failed: {
+        title: 'Negotiation Update',
+        body: `Your negotiation with ${providerName} didn't go through this time.`,
+      },
+      cancelled: {
+        title: 'Negotiation Cancelled',
+        body: `Your negotiation with ${providerName} has been cancelled.`,
+      },
+    };
+
+    return (
+      statusMessages[newStatus] || {
+        title: 'Bill Status Updated',
+        body: `Your bill with ${providerName} has been updated from ${oldStatus} to ${newStatus}.`,
+      }
+    );
   }
 
   // ==================== SAVINGS CALCULATION HELPER ====================
