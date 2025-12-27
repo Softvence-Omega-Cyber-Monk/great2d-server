@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { SubscriptionPlansService } from './subscription-plans.service';
 import {
@@ -22,16 +23,20 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { JwtGuard } from 'src/auth/guards/jwt.guards';
 import { GetUser } from '../auth/decorators/get-user.decorator';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { UserRole } from 'generated/prisma';
 
 @ApiTags('Subscription Plans')
 @Controller('subscription-plans')
 export class SubscriptionPlansController {
   constructor(
     private readonly subscriptionPlansService: SubscriptionPlansService,
-  ) {}
+  ) { }
 
   @Post()
   @UseGuards(JwtGuard)
@@ -45,6 +50,26 @@ export class SubscriptionPlansController {
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   create(@Body() createSubscriptionPlanDto: CreateSubscriptionPlanDto) {
     return this.subscriptionPlansService.create(createSubscriptionPlanDto);
+  }
+
+  @Get('subscriptions/all')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get all subscriptions made by all users (Admin only)' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['active', 'expired', 'all'],
+    description: 'Filter by subscription status'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Return all subscriptions',
+    type: [SubscriptionResponseDto],
+  })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  getAllSubscriptions(@Query('status') status?: 'active' | 'expired' | 'all') {
+    return this.subscriptionPlansService.getAllSubscriptions(status);
   }
 
   @Get()

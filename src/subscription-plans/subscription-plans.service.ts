@@ -16,7 +16,7 @@ import {
 export class SubscriptionPlansService {
   private readonly logger = new Logger(SubscriptionPlansService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async create(dto: CreateSubscriptionPlanDto) {
     return this.prisma.subscriptionPlan.create({
@@ -87,6 +87,78 @@ export class SubscriptionPlansService {
     return { message: 'Subscription plan deleted successfully' };
   }
 
+  async getAllSubscriptions(status?: 'active' | 'expired' | 'all') {
+    const now = new Date();
+
+    // Build where clause based on status filter
+    let whereClause: any = {};
+
+    if (status === 'active') {
+      whereClause = {
+        isActive: true,
+        expiresAt: {
+          gte: now,
+        },
+      };
+    } else if (status === 'expired') {
+      whereClause = {
+        OR: [
+          { isActive: false },
+          {
+            isActive: true,
+            expiresAt: {
+              lt: now,
+            },
+          },
+        ],
+      };
+    }
+    // For 'all' or undefined, no where clause filtering
+
+    const subscriptions = await this.prisma.subscription.findMany({
+      where: whereClause,
+      include: {
+        user: {
+          select: {
+            userId: true,
+            email: true,
+            fullName: true,
+            profilePictureUrl: true,
+          },
+        },
+        subscriptionPlan: {
+          select: {
+            subscriptionPlanId: true,
+            planName: true,
+            description: true,
+            price: true,
+            duration: true,
+            features: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Calculate status for each subscription
+    const enrichedSubscriptions = subscriptions.map(sub => ({
+      ...sub,
+      status: sub.isActive && sub.expiresAt >= now ? 'active' : 'expired',
+      daysRemaining: sub.expiresAt >= now
+        ? Math.ceil((sub.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : 0,
+    }));
+
+    return {
+      total: enrichedSubscriptions.length,
+      activeCount: enrichedSubscriptions.filter(s => s.status === 'active').length,
+      expiredCount: enrichedSubscriptions.filter(s => s.status === 'expired').length,
+      subscriptions: enrichedSubscriptions,
+    };
+  }
+
   async subscribe(userId: string, dto: SubscribeDto) {
     this.logger.log(`Subscribe called for user: ${userId}`);
 
@@ -146,7 +218,7 @@ export class SubscriptionPlansService {
 
     // Use provided date or current date
     const startDate = dto.createdAt ? new Date(dto.createdAt) : new Date();
-    
+
     if (isNaN(startDate.getTime())) {
       throw new BadRequestException('Invalid date format for createdAt');
     }
@@ -154,7 +226,7 @@ export class SubscriptionPlansService {
     // Validate that start date is not too far in the past
     const thirtyDaysAgo = new Date(now);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     if (startDate < thirtyDaysAgo) {
       throw new BadRequestException(
         'Start date cannot be more than 30 days in the past. Please use current date or omit createdAt field.'
@@ -218,7 +290,7 @@ export class SubscriptionPlansService {
     }
 
     const now = new Date();
-    
+
     // Find active, non-expired subscription
     const activeSubscription = await this.prisma.subscription.findFirst({
       where: {
@@ -237,13 +309,13 @@ export class SubscriptionPlansService {
     // Deactivate subscription
     await this.prisma.subscription.update({
       where: { subscriptionId: activeSubscription.subscriptionId },
-      data: { 
+      data: {
         isActive: false,
         updatedAt: now,
       },
     });
 
-    return { 
+    return {
       message: 'Unsubscribed successfully',
       subscriptionId: activeSubscription.subscriptionId,
     };
@@ -251,7 +323,7 @@ export class SubscriptionPlansService {
 
   async getUserSubscription(userId: string) {
     const now = new Date();
-    
+
     this.logger.log(`Getting subscription for user: ${userId}`);
     this.logger.log(`Current time: ${now.toISOString()}`);
 
@@ -263,7 +335,7 @@ export class SubscriptionPlansService {
     });
 
     this.logger.log(`Total subscriptions for user: ${allUserSubs.length}`);
-    
+
     allUserSubs.forEach((sub, index) => {
       this.logger.log(`Subscription ${index + 1}:`);
       this.logger.log(`  ID: ${sub.subscriptionId}`);
@@ -320,7 +392,7 @@ export class SubscriptionPlansService {
 
   async cleanupExpiredSubscriptions() {
     const now = new Date();
-    
+
     // Deactivate all expired subscriptions
     const result = await this.prisma.subscription.updateMany({
       where: {

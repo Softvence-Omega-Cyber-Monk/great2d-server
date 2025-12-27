@@ -1,14 +1,14 @@
-import { 
-  Injectable, 
-  NotFoundException, 
+import {
+  Injectable,
+  NotFoundException,
   ForbiddenException
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { NotificationService } from 'src/notification/notification.service';
-import { 
-  CreateBillDto, 
-  UpdateBillDto, 
+import {
+  CreateBillDto,
+  UpdateBillDto,
   SetSavingsGoalDto
 } from './dto/bill.dto';
 import { NotificationType } from 'src/notification/notification.dto';
@@ -19,10 +19,10 @@ export class BillService {
     private prisma: PrismaService,
     private firebaseService: FirebaseService,
     private notificationService: NotificationService,
-  ) {}
+  ) { }
 
   // ==================== BILL METHODS ====================
-  
+
   async createBill(userId: string, dto: CreateBillDto) {
     const user = await this.prisma.user.findUnique({
       where: { userId },
@@ -47,7 +47,7 @@ export class BillService {
         negotiatedAmount: dto.negotiatedAmount,
       }
     });
-    
+
     return bill;
   }
 
@@ -65,7 +65,7 @@ export class BillService {
 
   async getBillsByStatus(userId: string, status: string) {
     return this.prisma.bill.findMany({
-      where: { 
+      where: {
         userId,
         status: status
       },
@@ -96,8 +96,8 @@ export class BillService {
   }
 
   async updateBill(userId: string, id: string, dto: UpdateBillDto) {
-    const bill = await this.prisma.bill.findUnique({ 
-      where: { id } 
+    const bill = await this.prisma.bill.findUnique({
+      where: { id }
     });
 
     if (!bill) {
@@ -138,8 +138,8 @@ export class BillService {
   }
 
   async deleteBill(userId: string, id: string) {
-    const bill = await this.prisma.bill.findUnique({ 
-      where: { id } 
+    const bill = await this.prisma.bill.findUnique({
+      where: { id }
     });
 
     if (!bill) {
@@ -155,8 +155,8 @@ export class BillService {
   }
 
   async markBillAsSent(userId: string, id: string, emailThreadId?: string, emailMessageId?: string) {
-    const bill = await this.prisma.bill.findUnique({ 
-      where: { id } 
+    const bill = await this.prisma.bill.findUnique({
+      where: { id }
     });
 
     if (!bill) {
@@ -187,8 +187,8 @@ export class BillService {
   }
 
   async updateBillStatus(userId: string, id: string, status: string) {
-    const bill = await this.prisma.bill.findUnique({ 
-      where: { id } 
+    const bill = await this.prisma.bill.findUnique({
+      where: { id }
     });
 
     if (!bill) {
@@ -214,16 +214,16 @@ export class BillService {
   }
 
   // ==================== PUBLIC STATUS UPDATE (NO AUTH) ====================
-  
+
   async publicUpdateBillStatus(
-    userId: string, 
-    billId: string, 
+    userId: string,
+    billId: string,
     status: string,
     actualAmount?: number,
     negotiatedAmount?: number
   ) {
-    const bill = await this.prisma.bill.findUnique({ 
-      where: { id: billId } 
+    const bill = await this.prisma.bill.findUnique({
+      where: { id: billId }
     });
 
     if (!bill) {
@@ -236,7 +236,7 @@ export class BillService {
     }
 
     const oldStatus = bill.status;
-    
+
     // Build update data
     const updateData: any = { status };
     if (actualAmount !== undefined) updateData.actualAmount = actualAmount;
@@ -266,9 +266,9 @@ export class BillService {
       // Get user with FCM token
       const user = await this.prisma.user.findUnique({
         where: { userId },
-        select: { 
+        select: {
           fcmToken: true,
-          isNotificationsEnabled: true 
+          isNotificationsEnabled: true
         }
       });
 
@@ -356,7 +356,7 @@ export class BillService {
   }
 
   // ==================== SAVINGS CALCULATION HELPER ====================
-  
+
   private calculateSavings(actualAmount: number | null, negotiatedAmount: number | null): number {
     if (!actualAmount || !negotiatedAmount) {
       return 0;
@@ -474,7 +474,7 @@ export class BillService {
     if (month && year) {
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-      
+
       whereClause.updatedAt = {
         gte: startDate,
         lte: endDate
@@ -494,11 +494,11 @@ export class BillService {
 
     // Group by provider (category in this context means provider)
     const providerMap = new Map<string, { email: string; name: string | null; savings: number }>();
-    
+
     successfulBills.forEach(bill => {
       const key = bill.providerEmail;
       const existing = providerMap.get(key);
-      
+
       const savings = this.calculateSavings(bill.actualAmount, bill.negotiatedAmount);
 
       if (existing) {
@@ -531,7 +531,7 @@ export class BillService {
   }
 
   // ==================== SAVINGS GOALS & STATS ====================
-  
+
   async setSavingsGoal(userId: string, dto: SetSavingsGoalDto) {
     const user = await this.prisma.user.findUnique({
       where: { userId },
@@ -623,5 +623,101 @@ export class BillService {
       successfulBills,
       recentActivity
     };
+  }
+  async getAllBillsAdmin(status?: string, page: number = 1, limit: number = 50) {
+    const skip = (page - 1) * limit;
+
+    // Build where clause
+    const whereClause: any = {};
+    if (status) {
+      whereClause.status = status;
+    }
+
+    // Get total count for pagination
+    const total = await this.prisma.bill.count({ where: whereClause });
+
+    // Get bills with user information
+    const bills = await this.prisma.bill.findMany({
+      where: whereClause,
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            userId: true,
+            email: true,
+            fullName: true,
+            phone: true,
+            profilePictureUrl: true,
+            role: true,
+            createdAt: true,
+            isDarkMode: true,
+            isNotificationsEnabled: true,
+            isUsingBiometrics: true
+          }
+        }
+      }
+    });
+
+    // Transform the data to include calculated savings
+    const transformedBills = bills.map(bill => ({
+      id: bill.id,
+      userId: bill.userId,
+      userEmail: bill.user?.email || 'N/A',
+      userFullName: bill.user?.fullName || 'N/A',
+      userPhone: bill.user?.phone || 'N/A',
+      userProfilePicture: bill.user?.profilePictureUrl || null,
+      userRole: bill.user?.role || 'user',
+      userCreatedAt: bill.user?.createdAt || null,
+      userPreferences: {
+        isDarkMode: bill.user?.isDarkMode || false,
+        isNotificationsEnabled: bill.user?.isNotificationsEnabled || true,
+        isUsingBiometrics: bill.user?.isUsingBiometrics || false
+      },
+      providerEmail: bill.providerEmail,
+      providerName: bill.providerName,
+      category: bill.category,
+      status: bill.status,
+      actualAmount: bill.actualAmount,
+      negotiatedAmount: bill.negotiatedAmount,
+      savings: this.calculateSavings(bill.actualAmount, bill.negotiatedAmount),
+      accountDetails: bill.accountDetails,
+      emailSubject: bill.emailSubject,
+      emailThreadId: bill.emailThreadId,
+      emailMessageId: bill.emailMessageId,
+      createdAt: bill.createdAt,
+      updatedAt: bill.updatedAt,
+      sentAt: bill.sentAt
+    }));
+
+    return {
+      bills: transformedBills,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      },
+      summary: {
+        totalBills: total,
+        statusBreakdown: await this.getAdminStatusBreakdown(whereClause)
+      }
+    };
+  }
+
+  private async getAdminStatusBreakdown(whereClause: any) {
+    const statuses = ['draft', 'sent', 'negotiating', 'successful', 'failed', 'cancelled'];
+
+    const breakdown = await Promise.all(
+      statuses.map(async (status) => ({
+        status,
+        count: await this.prisma.bill.count({
+          where: { ...whereClause, status }
+        })
+      }))
+    );
+
+    return breakdown;
   }
 }
