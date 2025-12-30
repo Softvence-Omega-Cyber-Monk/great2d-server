@@ -187,18 +187,20 @@ export class BillController {
     return this.billService.getAllTimeSavings(userId);
   }
 
+  // Replace the @Get('savings/by-category') endpoint in bills.controller.ts
+
   @Get('savings/by-category')
   @UseGuards(JwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
-    summary: 'Get savings grouped by provider with optional month/year filter',
-    description: 'Groups savings by provider email, calculating (actualAmount - negotiatedAmount) for each'
+    summary: 'Get savings grouped by category with optional month/year filter',
+    description: 'Groups savings by bill category (internet, electricity, water, etc.), calculating (actualAmount - negotiatedAmount) for each'
   })
   @ApiQuery({ name: 'month', required: false, type: Number, example: 12, description: 'Month (1-12)' })
   @ApiQuery({ name: 'year', required: false, type: Number, example: 2024, description: 'Year' })
   @ApiResponse({
     status: 200,
-    description: 'Savings by provider with amounts and percentages',
+    description: 'Savings by category with amounts and percentages',
     schema: {
       type: 'object',
       properties: {
@@ -209,14 +211,14 @@ export class BillController {
           ]
         },
         totalSavings: { type: 'number', example: 1200.00 },
-        providers: {
+        categories: {
           type: 'array',
           items: {
             type: 'object',
             properties: {
-              providerEmail: { type: 'string', example: 'support@comcast.com' },
-              providerName: { type: 'string', example: 'Comcast' },
+              category: { type: 'string', example: 'internet' },
               savingsAmount: { type: 'number', example: 450.00 },
+              billsCount: { type: 'number', example: 3 },
               percentage: { type: 'number', example: 37.50 }
             }
           }

@@ -21,7 +21,7 @@ export class BillService {
     private notificationService: NotificationService,
   ) { }
 
-  // ==================== BILL METHODS ====================
+  //  BILL METHODS 
 
   async createBill(userId: string, dto: CreateBillDto) {
     const user = await this.prisma.user.findUnique({
@@ -465,70 +465,73 @@ export class BillService {
     };
   }
 
-  async getSavingsByCategory(userId: string, month?: number, year?: number) {
-    let whereClause: any = {
-      userId,
-      status: 'successful'
-    };
+  // Replace the getSavingsByCategory method in bills.service.ts
 
-    if (month && year) {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+async getSavingsByCategory(userId: string, month?: number, year?: number) {
+  let whereClause: any = {
+    userId,
+    status: 'successful'
+  };
 
-      whereClause.updatedAt = {
-        gte: startDate,
-        lte: endDate
-      };
-    }
+  if (month && year) {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
-    const successfulBills = await this.prisma.bill.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-        providerEmail: true,
-        providerName: true,
-        actualAmount: true,
-        negotiatedAmount: true
-      }
-    });
-
-    // Group by provider (category in this context means provider)
-    const providerMap = new Map<string, { email: string; name: string | null; savings: number }>();
-
-    successfulBills.forEach(bill => {
-      const key = bill.providerEmail;
-      const existing = providerMap.get(key);
-
-      const savings = this.calculateSavings(bill.actualAmount, bill.negotiatedAmount);
-
-      if (existing) {
-        existing.savings += savings;
-      } else {
-        providerMap.set(key, {
-          email: bill.providerEmail,
-          name: bill.providerName,
-          savings
-        });
-      }
-    });
-
-    const totalSavings = Array.from(providerMap.values()).reduce((sum, val) => sum + val.savings, 0);
-
-    const savingsByProvider = Array.from(providerMap.values()).map(({ email, name, savings }) => ({
-      providerEmail: email,
-      providerName: name,
-      savingsAmount: parseFloat(savings.toFixed(2)),
-      percentage: totalSavings > 0 ? parseFloat(((savings / totalSavings) * 100).toFixed(2)) : 0
-    }));
-
-    savingsByProvider.sort((a, b) => b.savingsAmount - a.savingsAmount);
-
-    return {
-      period: month && year ? { month, year } : 'all-time',
-      totalSavings: parseFloat(totalSavings.toFixed(2)),
-      providers: savingsByProvider
+    whereClause.updatedAt = {
+      gte: startDate,
+      lte: endDate
     };
   }
+
+  const successfulBills = await this.prisma.bill.findMany({
+    where: whereClause,
+    select: {
+      id: true,
+      category: true,
+      actualAmount: true,
+      negotiatedAmount: true
+    }
+  });
+
+  // Group by category
+  const categoryMap = new Map<string, { category: string; savings: number; count: number }>();
+
+  successfulBills.forEach(bill => {
+    const category = bill.category || 'other';
+    const existing = categoryMap.get(category);
+
+    const savings = this.calculateSavings(bill.actualAmount, bill.negotiatedAmount);
+
+    if (existing) {
+      existing.savings += savings;
+      existing.count += 1;
+    } else {
+      categoryMap.set(category, {
+        category,
+        savings,
+        count: 1
+      });
+    }
+  });
+
+  const totalSavings = Array.from(categoryMap.values()).reduce((sum, val) => sum + val.savings, 0);
+
+  const savingsByCategory = Array.from(categoryMap.values()).map(({ category, savings, count }) => ({
+    category,
+    savingsAmount: parseFloat(savings.toFixed(2)),
+    billsCount: count,
+    percentage: totalSavings > 0 ? parseFloat(((savings / totalSavings) * 100).toFixed(2)) : 0
+  }));
+
+  // Sort by savings amount (highest first)
+  savingsByCategory.sort((a, b) => b.savingsAmount - a.savingsAmount);
+
+  return {
+    period: month && year ? { month, year } : 'all-time',
+    totalSavings: parseFloat(totalSavings.toFixed(2)),
+    categories: savingsByCategory
+  };
+}
 
   // ==================== SAVINGS GOALS & STATS ====================
 
