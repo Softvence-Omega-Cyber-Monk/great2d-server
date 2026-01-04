@@ -11,7 +11,8 @@ async function bootstrap() {
       'https://billedsmart.com',
       'https://admin.billedsmart.com',
       'http://localhost:5173',
-      'http://localhost:5174'
+      'http://localhost:5174',
+      'http://148.230.81.16:3000'
     ],
     credentials: true,
     headers: true,
