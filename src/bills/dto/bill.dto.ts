@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
-import { IsEmail, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { IsDateString, IsEmail, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 // Removed enums - now just using strings
 
@@ -174,4 +174,63 @@ export class PublicUpdateStatusDto {
     @Min(0)
     @IsOptional()
     negotiatedAmount?: number;
+}
+
+// NEW DTO for Email Replies
+export class CreateEmailReplyDto {
+    @ApiProperty({ 
+        example: 'msg_abc123xyz',
+        description: 'Gmail message ID'
+    })
+    @IsString()
+    @IsNotEmpty()
+    messageId: string;
+
+    @ApiProperty({ 
+        example: 'thread_def456uvw',
+        description: 'Gmail thread ID'
+    })
+    @IsString()
+    @IsNotEmpty()
+    threadId: string;
+
+    @ApiProperty({ 
+        example: 'support@provider.com',
+        description: 'Email address of sender'
+    })
+    @IsEmail()
+    @IsNotEmpty()
+    fromEmail: string;
+
+    @ApiProperty({ 
+        example: 'Re: Request for Rate Review',
+        description: 'Email subject'
+    })
+    @IsString()
+    @IsNotEmpty()
+    subject: string;
+
+    @ApiProperty({ 
+        example: 'Thank you for reaching out. We have reviewed your request...',
+        description: 'Full email body content'
+    })
+    @IsString()
+    @IsNotEmpty()
+    body: string;
+
+    @ApiPropertyOptional({ 
+        example: 'Thank you for reaching out. We have reviewed...',
+        description: 'Email snippet/preview'
+    })
+    @IsString()
+    @IsOptional()
+    snippet?: string;
+
+    @ApiProperty({ 
+        example: '2024-01-15T14:30:00Z',
+        description: 'When the email was received'
+    })
+    @IsDateString()
+    @IsNotEmpty()
+    receivedAt: string;
 }

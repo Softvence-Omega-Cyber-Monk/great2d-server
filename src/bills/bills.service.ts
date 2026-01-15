@@ -9,7 +9,8 @@ import { NotificationService } from 'src/notification/notification.service';
 import {
   CreateBillDto,
   UpdateBillDto,
-  SetSavingsGoalDto
+  SetSavingsGoalDto,
+  CreateEmailReplyDto
 } from './dto/bill.dto';
 import { NotificationType } from 'src/notification/notification.dto';
 
@@ -259,6 +260,139 @@ export class BillService {
     };
   }
 
+  // ==================== NEW MISSING ENDPOINTS ====================
+
+  async getBillByThreadId(threadId: string) {
+    const bill = await this.prisma.bill.findFirst({
+      where: { emailThreadId: threadId },
+      include: {
+        emailReplies: {
+          orderBy: { receivedAt: 'desc' }
+        }
+      }
+    });
+
+    if (!bill) {
+      throw new NotFoundException(`Bill with thread ID ${threadId} not found`);
+    }
+
+    return bill;
+  }
+
+  async getPendingNegotiations() {
+    const bills = await this.prisma.bill.findMany({
+      where: {
+        status: {
+          in: ['sent', 'negotiating']
+        }
+      },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            userId: true,
+            email: true,
+            fullName: true
+          }
+        },
+        emailReplies: {
+          orderBy: { receivedAt: 'desc' },
+          take: 1
+        }
+      }
+    });
+
+    return {
+      count: bills.length,
+      pendingBills: bills
+    };
+  }
+
+  // ==================== EMAIL REPLY METHODS ====================
+
+  async createEmailReply(billId: string, dto: CreateEmailReplyDto) {
+    const bill = await this.prisma.bill.findUnique({
+      where: { id: billId }
+    });
+
+    if (!bill) {
+      throw new NotFoundException(`Bill with ID ${billId} not found`);
+    }
+
+    // Create email reply
+    const emailReply = await this.prisma.emailReply.create({
+      data: {
+        billId,
+        messageId: dto.messageId,
+        threadId: dto.threadId,
+        fromEmail: dto.fromEmail,
+        subject: dto.subject,
+        body: dto.body,
+        snippet: dto.snippet,
+        receivedAt: new Date(dto.receivedAt)
+      }
+    });
+
+    // Update bill status to 'negotiating' if it was 'sent'
+    if (bill.status === 'sent') {
+      await this.prisma.bill.update({
+        where: { id: billId },
+        data: { status: 'negotiating' }
+      });
+
+      // Send notification about status change
+      await this.sendStatusChangeNotification(bill.userId, { ...bill, status: 'negotiating' }, 'sent');
+    }
+
+    return {
+      success: true,
+      message: 'Email reply created successfully',
+      reply: emailReply
+    };
+  }
+
+  async getAllRepliesForBill(billId: string) {
+    const bill = await this.prisma.bill.findUnique({
+      where: { id: billId }
+    });
+
+    if (!bill) {
+      throw new NotFoundException(`Bill with ID ${billId} not found`);
+    }
+
+    const replies = await this.prisma.emailReply.findMany({
+      where: { billId },
+      orderBy: { receivedAt: 'desc' }
+    });
+
+    return {
+      billId,
+      count: replies.length,
+      replies
+    };
+  }
+
+  async getLatestReplyForBill(billId: string) {
+    const bill = await this.prisma.bill.findUnique({
+      where: { id: billId }
+    });
+
+    if (!bill) {
+      throw new NotFoundException(`Bill with ID ${billId} not found`);
+    }
+
+    const latestReply = await this.prisma.emailReply.findFirst({
+      where: { billId },
+      orderBy: { receivedAt: 'desc' }
+    });
+
+    if (!latestReply) {
+      throw new NotFoundException(`No replies found for bill ${billId}`);
+    }
+
+    return latestReply;
+  }
+
   // ==================== NOTIFICATION HELPER ====================
 
   private async sendStatusChangeNotification(userId: string, bill: any, oldStatus: string) {
@@ -465,73 +599,71 @@ export class BillService {
     };
   }
 
-  // Replace the getSavingsByCategory method in bills.service.ts
+  async getSavingsByCategory(userId: string, month?: number, year?: number) {
+    let whereClause: any = {
+      userId,
+      status: 'successful'
+    };
 
-async getSavingsByCategory(userId: string, month?: number, year?: number) {
-  let whereClause: any = {
-    userId,
-    status: 'successful'
-  };
+    if (month && year) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
-  if (month && year) {
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+      whereClause.updatedAt = {
+        gte: startDate,
+        lte: endDate
+      };
+    }
 
-    whereClause.updatedAt = {
-      gte: startDate,
-      lte: endDate
+    const successfulBills = await this.prisma.bill.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        category: true,
+        actualAmount: true,
+        negotiatedAmount: true
+      }
+    });
+
+    // Group by category
+    const categoryMap = new Map<string, { category: string; savings: number; count: number }>();
+
+    successfulBills.forEach(bill => {
+      const category = bill.category || 'other';
+      const existing = categoryMap.get(category);
+
+      const savings = this.calculateSavings(bill.actualAmount, bill.negotiatedAmount);
+
+      if (existing) {
+        existing.savings += savings;
+        existing.count += 1;
+      } else {
+        categoryMap.set(category, {
+          category,
+          savings,
+          count: 1
+        });
+      }
+    });
+
+    const totalSavings = Array.from(categoryMap.values()).reduce((sum, val) => sum + val.savings, 0);
+
+    const savingsByCategory = Array.from(categoryMap.values()).map(({ category, savings, count }) => ({
+      category,
+      savingsAmount: parseFloat(savings.toFixed(2)),
+      billsCount: count,
+      percentage: totalSavings > 0 ? parseFloat(((savings / totalSavings) * 100).toFixed(2)) : 0
+    }));
+
+    // Sort by savings amount (highest first)
+    savingsByCategory.sort((a, b) => b.savingsAmount - a.savingsAmount);
+
+    return {
+      period: month && year ? { month, year } : 'all-time',
+      totalSavings: parseFloat(totalSavings.toFixed(2)),
+      categories: savingsByCategory
     };
   }
-
-  const successfulBills = await this.prisma.bill.findMany({
-    where: whereClause,
-    select: {
-      id: true,
-      category: true,
-      actualAmount: true,
-      negotiatedAmount: true
-    }
-  });
-
-  // Group by category
-  const categoryMap = new Map<string, { category: string; savings: number; count: number }>();
-
-  successfulBills.forEach(bill => {
-    const category = bill.category || 'other';
-    const existing = categoryMap.get(category);
-
-    const savings = this.calculateSavings(bill.actualAmount, bill.negotiatedAmount);
-
-    if (existing) {
-      existing.savings += savings;
-      existing.count += 1;
-    } else {
-      categoryMap.set(category, {
-        category,
-        savings,
-        count: 1
-      });
-    }
-  });
-
-  const totalSavings = Array.from(categoryMap.values()).reduce((sum, val) => sum + val.savings, 0);
-
-  const savingsByCategory = Array.from(categoryMap.values()).map(({ category, savings, count }) => ({
-    category,
-    savingsAmount: parseFloat(savings.toFixed(2)),
-    billsCount: count,
-    percentage: totalSavings > 0 ? parseFloat(((savings / totalSavings) * 100).toFixed(2)) : 0
-  }));
-
-  // Sort by savings amount (highest first)
-  savingsByCategory.sort((a, b) => b.savingsAmount - a.savingsAmount);
-
-  return {
-    period: month && year ? { month, year } : 'all-time',
-    totalSavings: parseFloat(totalSavings.toFixed(2)),
-    categories: savingsByCategory
-  };
-}
 
   // ==================== SAVINGS GOALS & STATS ====================
 
@@ -627,6 +759,7 @@ async getSavingsByCategory(userId: string, month?: number, year?: number) {
       recentActivity
     };
   }
+
   async getAllBillsAdmin(status?: string, page: number = 1, limit: number = 50) {
     const skip = (page - 1) * limit;
 

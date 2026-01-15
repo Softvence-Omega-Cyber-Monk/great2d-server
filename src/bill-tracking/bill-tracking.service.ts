@@ -60,6 +60,37 @@ export class BillTrackingService {
   }
 
   /**
+   * Get all bill tracking records for a user (Public - with optional billId filter)
+   */
+  async findAllPublic(userId: string, month?: string, status?: BillPaymentStatus, billId?: string) {
+    const where: any = { userId };
+
+    if (month) {
+      const monthDate = this.parseMonthToDate(month);
+      where.month = monthDate;
+    }
+
+    if (status) {
+      where.paymentStatus = status;
+    }
+
+    if (billId) {
+      where.billId = billId;
+    }
+
+    return this.prisma.billTracking.findMany({
+      where,
+      orderBy: [
+        { month: 'desc' },
+        { dueDate: 'asc' }
+      ],
+      include: {
+        bill: true
+      }
+    });
+  }
+
+  /**
    * Get all bill tracking records for a user
    */
   async findAll(userId: string, month?: string, status?: BillPaymentStatus) {

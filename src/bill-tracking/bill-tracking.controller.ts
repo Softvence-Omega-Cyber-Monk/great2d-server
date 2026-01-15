@@ -1,7 +1,6 @@
 // ============================================
-// FILE 1: bill-tracking.controller.ts
+// FILE: bill-tracking.controller.ts
 // ============================================
-// Change @Request() req to use @GetUser() decorator like bills controller
 
 import {
   Controller,
@@ -29,20 +28,94 @@ import {
   CreateBillTrackingDto,
   UpdateBillTrackingDto,
   BillTrackingResponseDto,
-  MonthlyBillSummaryDto
+  MonthlyBillSummaryDto,
+  CreateBillTrackingPublicDto
 } from './dto/bill-tracking.dto';
 import { JwtGuard } from 'src/auth/guards/jwt.guards';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
 import { BillPaymentStatus } from 'generated/prisma';
 
 @ApiTags('Bill Tracking')
-@ApiBearerAuth('JWT-auth')
-@UseGuards(JwtGuard)
 @Controller('bill-tracking')
 export class BillTrackingController {
   constructor(private readonly billTrackingService: BillTrackingService) {}
 
+  // ============================================
+  // PUBLIC ENDPOINTS (No Authentication)
+  // ============================================
+
+  @Post('public')
+  @ApiOperation({
+    summary: 'Create a bill tracking record (Public)',
+    description: 'Creates a monthly tracking record for a specific bill without authentication. Requires userId and billId in the request body.'
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Bill tracking record created successfully',
+    type: BillTrackingResponseDto
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid input data or tracking already exists for this month'
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Bill not found'
+  })
+  createPublic(@Body() createDto: CreateBillTrackingPublicDto) {
+    return this.billTrackingService.create(createDto.userId, createDto);
+  }
+
+  @Get('public/:userId')
+  @ApiOperation({
+    summary: 'Get all bill tracking records for a user (Public)',
+    description: 'Retrieves all bill tracking records for a specific user without authentication. Can be filtered by month and payment status.'
+  })
+  @ApiParam({
+    name: 'userId',
+    description: 'User ID',
+    example: '123e4567-e89b-12d3-a456-426614174000'
+  })
+  @ApiQuery({
+    name: 'month',
+    required: false,
+    description: 'Filter by month in YYYY-MM format (e.g., 2024-01)',
+    example: '2024-01'
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'Filter by payment status',
+    enum: BillPaymentStatus,
+    example: BillPaymentStatus.due
+  })
+  @ApiQuery({
+    name: 'billId',
+    required: false,
+    description: 'Filter by specific bill ID',
+    example: '123e4567-e89b-12d3-a456-426614174000'
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Bill tracking records retrieved successfully',
+    type: [BillTrackingResponseDto]
+  })
+  findAllPublic(
+    @Param('userId') userId: string,
+    @Query('month') month?: string,
+    @Query('status') status?: BillPaymentStatus,
+    @Query('billId') billId?: string
+  ) {
+    return this.billTrackingService.findAllPublic(userId, month, status, billId);
+  }
+
+  // ============================================
+  // AUTHENTICATED ENDPOINTS
+  // ============================================
+
   @Post()
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtGuard)
   @ApiOperation({
     summary: 'Create a new bill tracking record',
     description: 'Creates a monthly tracking record for a specific bill. This allows users to track payment status for bills on a month-by-month basis.'
@@ -72,6 +145,8 @@ export class BillTrackingController {
   }
 
   @Get()
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtGuard)
   @ApiOperation({
     summary: 'Get all bill tracking records',
     description: 'Retrieves all bill tracking records for the authenticated user. Can be filtered by month and payment status using query parameters.'
@@ -107,6 +182,8 @@ export class BillTrackingController {
   }
 
   @Get('summary/:month')
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtGuard)
   @ApiOperation({
     summary: 'Get monthly bill summary',
     description: 'Retrieves a summary of all bills for a specific month, including total bills, paid/due/overdue counts, and total amounts.'
@@ -137,6 +214,8 @@ export class BillTrackingController {
   }
 
   @Get(':id')
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtGuard)
   @ApiOperation({
     summary: 'Get a specific bill tracking record',
     description: 'Retrieves detailed information about a specific bill tracking record by its ID.'
@@ -167,6 +246,8 @@ export class BillTrackingController {
   }
 
   @Patch(':id')
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtGuard)
   @ApiOperation({
     summary: 'Update a bill tracking record',
     description: 'Updates a bill tracking record. Commonly used to change payment status, update amounts, or modify due dates.'
@@ -203,6 +284,8 @@ export class BillTrackingController {
 
   @Patch(':id/mark-paid')
   @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtGuard)
   @ApiOperation({
     summary: 'Mark a bill as paid',
     description: 'Marks a bill tracking record as paid with the current timestamp. This is a convenience endpoint for the most common update operation.'
@@ -234,6 +317,8 @@ export class BillTrackingController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtGuard)
   @ApiOperation({
     summary: 'Delete a bill tracking record',
     description: 'Permanently deletes a bill tracking record. This does not affect the original bill, only the monthly tracking entry.'
@@ -262,4 +347,3 @@ export class BillTrackingController {
     return this.billTrackingService.remove(userId, id);
   }
 }
-

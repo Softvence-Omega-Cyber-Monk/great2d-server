@@ -17,7 +17,8 @@ import {
   UpdateBillDto,
   SetSavingsGoalDto,
   MarkBillAsSentDto,
-  PublicUpdateStatusDto
+  PublicUpdateStatusDto,
+  CreateEmailReplyDto
 } from './dto/bill.dto';
 import {
   ApiTags,
@@ -139,6 +140,79 @@ export class BillController {
     return this.billService.getRecentNegotiations(userId, limit || 10);
   }
 
+  // ==================== MISSING ENDPOINTS - ADDED ====================
+
+  @Get('negotiations/thread/:threadId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Get negotiation by Gmail thread ID (NO AUTH)',
+    description: 'Fetch a bill using Gmail thread ID'
+  })
+  @ApiParam({ name: 'threadId', description: 'Gmail thread ID' })
+  @ApiResponse({ status: 200, description: 'Bill found by thread ID' })
+  @ApiResponse({ status: 404, description: 'Bill not found' })
+  getByThreadId(@Param('threadId') threadId: string) {
+    return this.billService.getBillByThreadId(threadId);
+  }
+
+  @Get('pending')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Get pending negotiations (NO AUTH)',
+    description: 'Fetch all bills waiting for replies (status: sent or negotiating)'
+  })
+  @ApiResponse({ status: 200, description: 'List of pending bills' })
+  getPendingNegotiations() {
+    return this.billService.getPendingNegotiations();
+  }
+
+  // ==================== EMAIL REPLY ENDPOINTS ====================
+
+  @Post(':id/replies')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ 
+    summary: 'Create email reply (NO AUTH)',
+    description: 'Save a new email reply and update negotiation tracking status'
+  })
+  @ApiParam({ name: 'id', description: 'Bill ID' })
+  @ApiBody({ type: CreateEmailReplyDto })
+  @ApiResponse({ status: 201, description: 'Email reply created successfully' })
+  @ApiResponse({ status: 404, description: 'Bill not found' })
+  createEmailReply(
+    @Param('id') billId: string,
+    @Body() dto: CreateEmailReplyDto
+  ) {
+    return this.billService.createEmailReply(billId, dto);
+  }
+
+  @Get('negotiations/:id/replies')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Get all replies for a negotiation (NO AUTH)',
+    description: 'List all email replies for a negotiation'
+  })
+  @ApiParam({ name: 'id', description: 'Bill/Negotiation ID' })
+  @ApiResponse({ status: 200, description: 'List of email replies' })
+  @ApiResponse({ status: 404, description: 'Bill not found' })
+  getAllReplies(@Param('id') billId: string) {
+    return this.billService.getAllRepliesForBill(billId);
+  }
+
+  @Get('negotiations/:id/replies/latest')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Get latest reply for a negotiation (NO AUTH)',
+    description: 'Fetch the most recent email reply for a negotiation'
+  })
+  @ApiParam({ name: 'id', description: 'Bill/Negotiation ID' })
+  @ApiResponse({ status: 200, description: 'Latest email reply' })
+  @ApiResponse({ status: 404, description: 'Bill not found or no replies' })
+  getLatestReply(@Param('id') billId: string) {
+    return this.billService.getLatestReplyForBill(billId);
+  }
+
+  // ==================== SAVINGS ENDPOINTS ====================
+
   @Get('savings/this-month')
   @UseGuards(JwtGuard)
   @ApiBearerAuth('JWT-auth')
@@ -186,8 +260,6 @@ export class BillController {
   getAllTimeSavings(@GetUser('userId') userId: string) {
     return this.billService.getAllTimeSavings(userId);
   }
-
-  // Replace the @Get('savings/by-category') endpoint in bills.controller.ts
 
   @Get('savings/by-category')
   @UseGuards(JwtGuard)
@@ -504,7 +576,6 @@ export class BillController {
   getSavingsGoal(@GetUser('userId') userId: string) {
     return this.billService.getSavingsGoal(userId);
   }
-  // Add this to bills.controller.ts
 
   // ==================== ADMIN ENDPOINTS ====================
 

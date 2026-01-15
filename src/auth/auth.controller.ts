@@ -5,6 +5,7 @@ import {
   Get,
   UseGuards,
   Patch,
+  Param,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -23,6 +24,9 @@ import {
   VerifyOtpDto,
   ResetPasswordDto
 } from './dto/auth.dto';
+
+import { Query } from '@nestjs/common';
+import { CreateOrUpdateOAuthUserDto, UpdateOAuthTokensDto, OAuthUserResponseDto } from './dto/oauth-tokens.dto';
 
 import { SocialLoginDto, SocialAuthResponseDto } from './dto/social-login.dto';
 
@@ -154,6 +158,57 @@ export class AuthController {
       resetPasswordDto.email,
       resetPasswordDto.code,
       resetPasswordDto.newPassword,
+    );
+  }
+  @Get('users')
+  @ApiOperation({ summary: 'Get user by email' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return user by email',
+    type: OAuthUserResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getUserByEmail(@Query('email') email: string) {
+    return this.authService.getUserByEmail(email);
+  }
+
+  @Post('auth_users')
+  @ApiOperation({ 
+    summary: 'Create or update Google OAuth user',
+    description: 'Creates a new user with OAuth tokens or updates tokens if the user exists'
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'OAuth user created or tokens updated successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  async createOrUpdateOAuthUser(@Body() dto: CreateOrUpdateOAuthUserDto) {
+    return this.authService.createOrUpdateOAuthUser(
+      dto.email,
+      dto.access_token,
+      dto.refresh_token,
+    );
+  }
+
+  @Patch('users/:userId/tokens')
+  @ApiOperation({ 
+    summary: "Update user's Google OAuth tokens",
+    description: 'Update a user\'s Google OAuth access token and optionally refresh token'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'OAuth tokens updated successfully',
+    type: OAuthUserResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async updateOAuthTokens(
+    @Param('userId') userId: string,
+    @Body() dto: UpdateOAuthTokensDto,
+  ) {
+    return this.authService.updateOAuthTokens(
+      userId,
+      dto.access_token,
+      dto.refresh_token,
     );
   }
 }

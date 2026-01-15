@@ -16,12 +16,12 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private mailService: MailService,
-  ) {}
+  ) { }
 
   // Helper method to generate tokens
   private generateTokens(userId: string, email: string, role: string) {
     const payload = { sub: userId, email, role };
-    
+
     return {
       access_token: this.jwtService.sign(payload),
       refresh_token: this.jwtService.sign(payload, { expiresIn: '30d' }),
@@ -121,11 +121,11 @@ export class AuthService {
     } else {
       // Update profile picture and FCM token if provided
       const updateData: any = {};
-      
+
       if (profilePictureUrl && !user.profilePictureUrl) {
         updateData.profilePictureUrl = profilePictureUrl;
       }
-      
+
       if (fcmToken) {
         updateData.fcmToken = fcmToken;
       }
@@ -511,6 +511,145 @@ export class AuthService {
     return {
       ...userProfile,
       currentSubscription: subscriptions[0] || null,
+    };
+  }
+  // Add these methods to your existing AuthService class
+
+  /**
+   * Get user by email
+   */
+  async getUserByEmail(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        userId: true,
+        email: true,
+        fullName: true,
+        googleAccessToken: true,
+        googleRefreshToken: true,
+        isDeleted: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user || user.isDeleted) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
+
+  /**
+   * Create or update Google OAuth user with tokens
+   */
+  async createOrUpdateOAuthUser(
+    email: string,
+    accessToken: string,
+    refreshToken: string,
+  ) {
+    // Check if user exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      // Update existing user's tokens
+      const updatedUser = await this.prisma.user.update({
+        where: { email },
+        data: {
+          googleAccessToken: accessToken,
+          googleRefreshToken: refreshToken,
+        },
+        select: {
+          userId: true,
+          email: true,
+          fullName: true,
+          googleAccessToken: true,
+          googleRefreshToken: true,
+          isDeleted: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return {
+        message: 'OAuth tokens updated successfully',
+        user: updatedUser,
+      };
+    } else {
+      // Create new user with OAuth tokens
+      const newUser = await this.prisma.user.create({
+        data: {
+          email,
+          password: '', // No password for OAuth users
+          role: 'user',
+          googleAccessToken: accessToken,
+          googleRefreshToken: refreshToken,
+        },
+        select: {
+          userId: true,
+          email: true,
+          fullName: true,
+          googleAccessToken: true,
+          googleRefreshToken: true,
+          isDeleted: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return {
+        message: 'OAuth user created successfully',
+        user: newUser,
+      };
+    }
+  }
+
+  /**
+   * Update user's OAuth tokens
+   */
+  async updateOAuthTokens(
+    userId: string,
+    accessToken: string,
+    refreshToken?: string,
+  ) {
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+    });
+
+    if (!user || user.isDeleted) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      googleAccessToken: accessToken,
+    };
+
+    // Only update refresh token if provided
+    if (refreshToken) {
+      updateData.googleRefreshToken = refreshToken;
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { userId },
+      data: updateData,
+      select: {
+        userId: true,
+        email: true,
+        fullName: true,
+        googleAccessToken: true,
+        googleRefreshToken: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return {
+      message: 'OAuth tokens updated successfully',
+      user: updatedUser,
     };
   }
 }
