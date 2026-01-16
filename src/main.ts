@@ -15,7 +15,7 @@ async function bootstrap() {
       'http://148.230.81.16:3000'
     ],
     credentials: true,
-    headers: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
   });
 
