@@ -34,6 +34,14 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   fcmToken?: string;
+
+  @ApiProperty({
+    example: 'role',
+    required: false,
+    description: "Role"
+  })
+  @IsOptional()
+  role?: string
 }
 
 export class LoginDto {

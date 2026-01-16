@@ -185,7 +185,7 @@ export class AuthService {
     };
   }
 
-  async register(email: string, password: string, fullName?: string, fcmToken?: string) {
+  async register(email: string, password: string, fullName?: string, fcmToken?: string, role?: string) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
@@ -194,6 +194,8 @@ export class AuthService {
       throw new ConflictException('User with this email already exists');
     }
 
+    const userRole = (role ?? "user") as any;
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await this.prisma.user.create({
@@ -201,7 +203,7 @@ export class AuthService {
         email,
         password: hashedPassword,
         fullName,
-        role: 'user',
+        role: userRole,
         fcmToken,
       },
       select: {

@@ -48,6 +48,7 @@ export class AuthController {
       registerDto.password,
       registerDto.fullName,
       registerDto.fcmToken,
+      registerDto.role
     );
   }
 
