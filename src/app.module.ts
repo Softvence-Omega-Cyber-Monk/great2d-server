@@ -13,8 +13,9 @@ import { PayPalModule } from './paypal/paypal.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { NotificationModule } from './notification/notification.module';
 import { PaymentModule } from './payment/payment.module';
+import { SocialInfoModule } from './social-info/social-info.module';
 
 @Module({
-  imports: [PrismaModule, ConfigModule.forRoot({isGlobal: true}), AuthModule, UsersModule, PaymentMethodsModule, SubscriptionPlansModule, BillModule, MailModule, StripeKeyModule, BillTrackingModule, PayPalModule, FirebaseModule, NotificationModule, PaymentModule],
+  imports: [PrismaModule, ConfigModule.forRoot({isGlobal: true}), AuthModule, UsersModule, PaymentMethodsModule, SubscriptionPlansModule, BillModule, MailModule, StripeKeyModule, BillTrackingModule, PayPalModule, FirebaseModule, NotificationModule, PaymentModule, SocialInfoModule],
 })
 export class AppModule {}

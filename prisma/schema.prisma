@@ -283,3 +283,30 @@ model EmailReply {
   @@index([messageId])
   @@map("email_replies")
 }
+
+model Email {
+  id        String   @id @default(uuid())
+  email     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("emails")
+}
+
+model Phone {
+  id        String   @id @default(uuid())
+  phone     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("phones")
+}
+
+model WhatsApp {
+  id             String   @id @default(uuid())
+  whatsappNumber String   @map("whatsapp_number")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("whatsapps")
+}
