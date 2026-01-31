@@ -363,7 +363,7 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    const code = Math.floor(10000 + Math.random() * 90000).toString();
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
 
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 15);
