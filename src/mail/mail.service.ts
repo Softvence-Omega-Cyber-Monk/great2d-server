@@ -103,17 +103,18 @@ export class MailService {
       <body>
         <div class="container">
           <div class="header">
-            <h1>Password Reset Request</h1>
+            <h1>Billedsmart - Password Reset Request</h1>
           </div>
           
-          <p>Hello ${name},</p>
+          <p>Hi ${name},</p>
           
-          <p>We received a request to reset your password. Use the code below to reset your password:</p>
+          <p>We received a request to reset your password for your billedsmart account. Use the code below to reset your password:</p>
           
           <div class="code-container">
             <p class="code">${code}</p>
           </div>
-          
+          <p>Security tip: If you didn’t request this reset, ignore this email.
+            Billedsmart will never ask you for this code by phone, SMS, or email.</p>
           <div class="warning">
             <strong>⚠️ Important:</strong>
             <ul style="margin: 10px 0 0 0; padding-left: 20px;">
@@ -127,7 +128,7 @@ export class MailService {
           
           <div class="footer">
             <p>This is an automated message, please do not reply to this email.</p>
-            <p>&copy; ${new Date().getFullYear()} Your Company. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} Billedsmart. All rights reserved.</p>
           </div>
         </div>
       </body>
