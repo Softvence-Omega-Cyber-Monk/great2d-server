@@ -125,10 +125,12 @@ export class MailService {
           </div>
           
           <p>If you have any questions or concerns, please contact our support team.</p>
+
+          <p>Need help? <a href="mailto:info@billedsmart.com">Contact Support</a></p>
           
           <div class="footer">
             <p>This is an automated message, please do not reply to this email.</p>
-            <p>&copy; ${new Date().getFullYear()} Billedsmart. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} Billedsmart. Website: <a href="https://billedsmart.com">Billedsmart</a>. All rights reserved. Privacy Policy: <a href="https://billedsmart.com/privacy-policy">Privacy Policy</a></p>
           </div>
         </div>
       </body>
