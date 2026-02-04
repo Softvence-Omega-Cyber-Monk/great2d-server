@@ -159,6 +159,241 @@ export class SubscriptionPlansService {
     };
   }
 
+  async getAllUserSubscriptions(userId: string) {
+    const now = new Date();
+
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const subscriptions = await this.prisma.subscription.findMany({
+      where: { userId },
+      include: {
+        subscriptionPlan: {
+          select: {
+            subscriptionPlanId: true,
+            planName: true,
+            description: true,
+            price: true,
+            duration: true,
+            features: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Enrich with status and days remaining
+    const enrichedSubscriptions = subscriptions.map(sub => ({
+      ...sub,
+      status: sub.isActive && sub.expiresAt >= now ? 'active' : 'expired',
+      daysRemaining: sub.expiresAt >= now
+        ? Math.ceil((sub.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : 0,
+    }));
+
+    return {
+      total: enrichedSubscriptions.length,
+      activeCount: enrichedSubscriptions.filter(s => s.status === 'active').length,
+      expiredCount: enrichedSubscriptions.filter(s => s.status === 'expired').length,
+      subscriptions: enrichedSubscriptions,
+    };
+  }
+
+  async getSubscriptionGraphData(
+    period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'monthly',
+    startDate?: string,
+    endDate?: string,
+  ) {
+    const now = new Date();
+    
+    // Default date range: last 12 months
+    const defaultStartDate = new Date(now);
+    defaultStartDate.setMonth(defaultStartDate.getMonth() - 12);
+    
+    const start = startDate ? new Date(startDate) : defaultStartDate;
+    const end = endDate ? new Date(endDate) : now;
+
+    // Validate dates
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new BadRequestException('Invalid date format. Use ISO 8601 format (e.g., 2024-01-01)');
+    }
+
+    if (start > end) {
+      throw new BadRequestException('Start date must be before end date');
+    }
+
+    // Fetch all subscriptions in the date range
+    const subscriptions = await this.prisma.subscription.findMany({
+      where: {
+        createdAt: {
+          gte: start,
+          lte: end,
+        },
+      },
+      include: {
+        subscriptionPlan: {
+          select: {
+            subscriptionPlanId: true,
+            planName: true,
+            price: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    // Group data by period
+    const groupedData = this.groupSubscriptionsByPeriod(subscriptions, period, start, end);
+    
+    // Calculate statistics
+    const totalRevenue = subscriptions.reduce((sum, sub) => sum + sub.subscriptionPlan.price, 0);
+    const activeSubscriptions = subscriptions.filter(sub => 
+      sub.isActive && sub.expiresAt >= now
+    ).length;
+
+    // Group by plan
+    const byPlan = this.groupByPlan(subscriptions);
+
+    return {
+      period,
+      dateRange: {
+        start: start.toISOString(),
+        end: end.toISOString(),
+      },
+      summary: {
+        totalSubscriptions: subscriptions.length,
+        activeSubscriptions,
+        expiredSubscriptions: subscriptions.length - activeSubscriptions,
+        totalRevenue,
+        averageRevenue: subscriptions.length > 0 ? totalRevenue / subscriptions.length : 0,
+      },
+      timeSeriesData: groupedData,
+      byPlan,
+    };
+  }
+
+  private groupSubscriptionsByPeriod(
+    subscriptions: any[],
+    period: 'daily' | 'weekly' | 'monthly' | 'yearly',
+    start: Date,
+    end: Date,
+  ) {
+    const dataMap = new Map<string, any>();
+
+    // Initialize all periods in range
+    const current = new Date(start);
+    while (current <= end) {
+      const key = this.getDateKey(current, period);
+      dataMap.set(key, {
+        period: key,
+        count: 0,
+        revenue: 0,
+        active: 0,
+        expired: 0,
+      });
+      this.incrementDate(current, period);
+    }
+
+    const now = new Date();
+
+    // Populate with actual data
+    subscriptions.forEach(sub => {
+      const key = this.getDateKey(new Date(sub.createdAt), period);
+      if (dataMap.has(key)) {
+        const data = dataMap.get(key);
+        data.count += 1;
+        data.revenue += sub.subscriptionPlan.price;
+        if (sub.isActive && sub.expiresAt >= now) {
+          data.active += 1;
+        } else {
+          data.expired += 1;
+        }
+      }
+    });
+
+    return Array.from(dataMap.values());
+  }
+
+  private groupByPlan(subscriptions: any[]) {
+    const planMap = new Map<string, any>();
+
+    subscriptions.forEach(sub => {
+      const planId = sub.subscriptionPlan.subscriptionPlanId;
+      if (!planMap.has(planId)) {
+        planMap.set(planId, {
+          planId,
+          planName: sub.subscriptionPlan.planName,
+          count: 0,
+          revenue: 0,
+          active: 0,
+        });
+      }
+      const plan = planMap.get(planId);
+      plan.count += 1;
+      plan.revenue += sub.subscriptionPlan.price;
+      if (sub.isActive && sub.expiresAt >= new Date()) {
+        plan.active += 1;
+      }
+    });
+
+    return Array.from(planMap.values()).sort((a, b) => b.revenue - a.revenue);
+  }
+
+  private getDateKey(date: Date, period: 'daily' | 'weekly' | 'monthly' | 'yearly'): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    switch (period) {
+      case 'daily':
+        return `${year}-${month}-${day}`;
+      case 'weekly':
+        const weekNum = this.getWeekNumber(date);
+        return `${year}-W${String(weekNum).padStart(2, '0')}`;
+      case 'monthly':
+        return `${year}-${month}`;
+      case 'yearly':
+        return `${year}`;
+      default:
+        return `${year}-${month}`;
+    }
+  }
+
+  private getWeekNumber(date: Date): number {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  }
+
+  private incrementDate(date: Date, period: 'daily' | 'weekly' | 'monthly' | 'yearly'): void {
+    switch (period) {
+      case 'daily':
+        date.setDate(date.getDate() + 1);
+        break;
+      case 'weekly':
+        date.setDate(date.getDate() + 7);
+        break;
+      case 'monthly':
+        date.setMonth(date.getMonth() + 1);
+        break;
+      case 'yearly':
+        date.setFullYear(date.getFullYear() + 1);
+        break;
+    }
+  }
+
   async subscribe(userId: string, dto: SubscribeDto) {
     this.logger.log(`Subscribe called for user: ${userId}`);
 

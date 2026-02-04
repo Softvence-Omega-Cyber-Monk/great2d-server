@@ -72,6 +72,39 @@ export class SubscriptionPlansController {
     return this.subscriptionPlansService.getAllSubscriptions(status);
   }
 
+  @Get('subscriptions/graph-data')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get subscription graph data for analytics (Admin only)' })
+  @ApiQuery({
+    name: 'period',
+    required: false,
+    enum: ['daily', 'weekly', 'monthly', 'yearly'],
+    description: 'Time period for grouping data'
+  })
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    description: 'Start date for filtering (ISO 8601 format)'
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    description: 'End date for filtering (ISO 8601 format)'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Return subscription graph data',
+  })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  getSubscriptionGraphData(
+    @Query('period') period?: 'daily' | 'weekly' | 'monthly' | 'yearly',
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.subscriptionPlansService.getSubscriptionGraphData(period, startDate, endDate);
+  }
+
   @Get()
   @ApiOperation({ summary: 'Get all subscription plans' })
   @ApiResponse({
@@ -158,6 +191,19 @@ export class SubscriptionPlansController {
   @ApiResponse({ status: 400, description: 'No active subscription found' })
   unsubscribe(@GetUser('userId') userId: string) {
     return this.subscriptionPlansService.unsubscribe(userId);
+  }
+
+  @Get('user/me/history')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get all my subscriptions (current and past)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return all user subscriptions',
+    type: [SubscriptionResponseDto],
+  })
+  getAllMySubscriptions(@GetUser('userId') userId: string) {
+    return this.subscriptionPlansService.getAllUserSubscriptions(userId);
   }
 
   @Get('user/me')
