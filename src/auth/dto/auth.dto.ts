@@ -91,11 +91,11 @@ export class VerifyOtpDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: '12345' })
+  @ApiProperty({ example: '123456' })
   @IsString()
   @IsNotEmpty()
-  @Length(5, 5)
-  @Matches(/^\d{5}$/, { message: 'Code must be exactly 5 digits' })
+  @Length(6, 6)
+  @Matches(/^\d{6}$/, { message: 'Code must be exactly 6 digits' })
   code: string;
 }
 
@@ -105,11 +105,11 @@ export class ResetPasswordDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: '12345' })
+  @ApiProperty({ example: '123456' })
   @IsString()
   @IsNotEmpty()
-  @Length(5, 5)
-  @Matches(/^\d{5}$/, { message: 'Code must be exactly 5 digits' })
+  @Length(6, 6)
+  @Matches(/^\d{6}$/, { message: 'Code must be exactly 6 digits' })
   code: string;
 
   @ApiProperty({ example: 'NewPassword123!' })

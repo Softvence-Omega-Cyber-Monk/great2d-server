@@ -18,20 +18,18 @@ export class PaymentService {
             const paymentIntent = await this.stripe.paymentIntents.create({
                 amount: Math.round(amount * 100),
                 currency,
-                automatic_payment_methods: {
-                    enabled: true,
-                },
+                payment_method_types: ['card'],
             });
 
-            if (!paymentIntent.client_secret) {  // Add this null check
+            if (!paymentIntent.client_secret) {
                 throw new Error('Payment intent created but client secret is missing');
             }
 
             return {
-                clientSecret: paymentIntent.client_secret,  // Now TypeScript knows it's not null
+                clientSecret: paymentIntent.client_secret,
                 paymentIntentId: paymentIntent.id,
             };
-        } catch (error) {
+        } catch (error: any) {
             throw new Error(`Failed to create payment intent: ${error.message}`);
         }
     }
