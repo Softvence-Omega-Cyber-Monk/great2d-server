@@ -38,6 +38,11 @@ export class CreateSubscriptionPlanDto {
   @IsArray()
   @IsString({ each: true })
   features: string[];
+
+  @ApiPropertyOptional({ example: 'com.great2d.premium.monthly' })
+  @IsString()
+  @IsOptional()
+  appleProductId?: string;
 }
 
 export class UpdateSubscriptionPlanDto extends PartialType(
@@ -62,6 +67,9 @@ export class SubscriptionPlanResponseDto {
 
   @ApiProperty({ type: [String] })
   features: string[];
+
+  @ApiPropertyOptional()
+  appleProductId?: string;
 
   @ApiProperty()
   createdAt: Date;
