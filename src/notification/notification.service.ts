@@ -76,9 +76,9 @@ export class NotificationService {
    */
   async getUnreadNotifications(userId: string) {
     const notifications = await this.prisma.notification.findMany({
-      where: { 
+      where: {
         userId,
-        isRead: false 
+        isRead: false,
       },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -105,9 +105,9 @@ export class NotificationService {
    */
   async getNotificationById(userId: string, notificationId: string) {
     const notification = await this.prisma.notification.findFirst({
-      where: { 
+      where: {
         id: notificationId,
-        userId 
+        userId,
       },
       include: {
         bill: {
@@ -136,9 +136,9 @@ export class NotificationService {
    */
   async markAsRead(userId: string, notificationId: string) {
     const notification = await this.prisma.notification.findFirst({
-      where: { 
+      where: {
         id: notificationId,
-        userId 
+        userId,
       },
     });
 
@@ -148,7 +148,7 @@ export class NotificationService {
 
     return this.prisma.notification.update({
       where: { id: notificationId },
-      data: { 
+      data: {
         isRead: true,
         readAt: new Date(),
       },
@@ -160,11 +160,11 @@ export class NotificationService {
    */
   async markAllAsRead(userId: string) {
     const result = await this.prisma.notification.updateMany({
-      where: { 
+      where: {
         userId,
-        isRead: false 
+        isRead: false,
       },
-      data: { 
+      data: {
         isRead: true,
         readAt: new Date(),
       },
@@ -181,9 +181,9 @@ export class NotificationService {
    */
   async deleteNotification(userId: string, notificationId: string) {
     const notification = await this.prisma.notification.findFirst({
-      where: { 
+      where: {
         id: notificationId,
-        userId 
+        userId,
       },
     });
 
@@ -203,9 +203,9 @@ export class NotificationService {
    */
   async deleteAllRead(userId: string) {
     const result = await this.prisma.notification.deleteMany({
-      where: { 
+      where: {
         userId,
-        isRead: true 
+        isRead: true,
       },
     });
 
@@ -220,9 +220,9 @@ export class NotificationService {
    */
   async getUnreadCount(userId: string) {
     const count = await this.prisma.notification.count({
-      where: { 
+      where: {
         userId,
-        isRead: false 
+        isRead: false,
       },
     });
 
@@ -234,9 +234,9 @@ export class NotificationService {
    */
   async getNotificationsByType(userId: string, type: NotificationType) {
     const notifications = await this.prisma.notification.findMany({
-      where: { 
+      where: {
         userId,
-        type 
+        type,
       },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -267,7 +267,7 @@ export class NotificationService {
     oneDayAgo.setHours(oneDayAgo.getHours() - 24);
 
     const notifications = await this.prisma.notification.findMany({
-      where: { 
+      where: {
         userId,
         createdAt: {
           gte: oneDayAgo,

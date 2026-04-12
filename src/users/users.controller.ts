@@ -52,7 +52,9 @@ export class UsersController {
   @Patch('me')
   @UseInterceptors(FileInterceptor('profilePicture'))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Update current logged-in user profile with optional image upload' })
+  @ApiOperation({
+    summary: 'Update current logged-in user profile with optional image upload',
+  })
   @ApiBody({
     schema: {
       type: 'object',
@@ -84,7 +86,12 @@ export class UsersController {
   ) {
     // Validate file type if file is uploaded
     if (file) {
-      const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      const allowedMimeTypes = [
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/webp',
+      ];
       if (!allowedMimeTypes.includes(file.mimetype)) {
         throw new BadRequestException(
           'Invalid file type. Only JPEG, JPG, PNG, and WEBP images are allowed.',
@@ -94,7 +101,9 @@ export class UsersController {
       // Validate file size (max 5MB)
       const maxSize = 5 * 1024 * 1024; // 5MB
       if (file.size > maxSize) {
-        throw new BadRequestException('File size too large. Maximum size is 5MB.');
+        throw new BadRequestException(
+          'File size too large. Maximum size is 5MB.',
+        );
       }
     }
 
@@ -102,7 +111,9 @@ export class UsersController {
   }
 
   @Delete('me')
-  @ApiOperation({ summary: 'Delete current logged-in user account (soft delete)' })
+  @ApiOperation({
+    summary: 'Delete current logged-in user account (soft delete)',
+  })
   @ApiResponse({ status: 200, description: 'Account deleted successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   deleteCurrentUser(@GetUser('userId') userId: string) {
@@ -118,7 +129,10 @@ export class UsersController {
     description: 'Return all users',
     type: [UserResponseDto],
   })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
   findAll() {
     return this.usersService.findAll();
   }
@@ -132,7 +146,10 @@ export class UsersController {
     description: 'Return all deleted users',
     type: [UserResponseDto],
   })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
   findAllDeleted() {
     return this.usersService.findAllDeleted();
   }
@@ -179,7 +196,10 @@ export class UsersController {
   })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid file type' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Can only update own profile' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Can only update own profile',
+  })
   async update(
     @Param('id') id: string,
     @GetUser('userId') requestUserId: string,
@@ -188,7 +208,12 @@ export class UsersController {
   ) {
     // Validate file type if file is uploaded
     if (file) {
-      const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      const allowedMimeTypes = [
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/webp',
+      ];
       if (!allowedMimeTypes.includes(file.mimetype)) {
         throw new BadRequestException(
           'Invalid file type. Only JPEG, JPG, PNG, and WEBP images are allowed.',
@@ -198,7 +223,9 @@ export class UsersController {
       // Validate file size (max 5MB)
       const maxSize = 5 * 1024 * 1024; // 5MB
       if (file.size > maxSize) {
-        throw new BadRequestException('File size too large. Maximum size is 5MB.');
+        throw new BadRequestException(
+          'File size too large. Maximum size is 5MB.',
+        );
       }
     }
 
@@ -210,7 +237,10 @@ export class UsersController {
   @ApiParam({ name: 'id', description: 'User ID' })
   @ApiResponse({ status: 200, description: 'User deleted successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Can only delete own account' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Can only delete own account',
+  })
   remove(@Param('id') id: string, @GetUser('userId') requestUserId: string) {
     return this.usersService.remove(id, requestUserId);
   }
@@ -222,7 +252,10 @@ export class UsersController {
   @ApiParam({ name: 'id', description: 'User ID' })
   @ApiResponse({ status: 200, description: 'User restored successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
   restore(@Param('id') id: string) {
     return this.usersService.restore(id);
   }
@@ -234,7 +267,10 @@ export class UsersController {
   @ApiParam({ name: 'id', description: 'User ID' })
   @ApiResponse({ status: 200, description: 'User permanently deleted' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
   permanentDelete(@Param('id') id: string) {
     return this.usersService.permanentDelete(id);
   }

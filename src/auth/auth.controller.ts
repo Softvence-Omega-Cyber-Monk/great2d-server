@@ -22,11 +22,15 @@ import {
   ChangePasswordDto,
   ForgotPasswordDto,
   VerifyOtpDto,
-  ResetPasswordDto
+  ResetPasswordDto,
 } from './dto/auth.dto';
 
 import { Query } from '@nestjs/common';
-import { CreateOrUpdateOAuthUserDto, UpdateOAuthTokensDto, OAuthUserResponseDto } from './dto/oauth-tokens.dto';
+import {
+  CreateOrUpdateOAuthUserDto,
+  UpdateOAuthTokensDto,
+  OAuthUserResponseDto,
+} from './dto/oauth-tokens.dto';
 
 import { SocialLoginDto, SocialAuthResponseDto } from './dto/social-login.dto';
 
@@ -48,7 +52,7 @@ export class AuthController {
       registerDto.password,
       registerDto.fullName,
       registerDto.fcmToken,
-      registerDto.role
+      registerDto.role,
     );
   }
 
@@ -68,9 +72,10 @@ export class AuthController {
   }
 
   @Post('social-login')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Login or register via social provider',
-    description: 'Handles both first-time social login (creates account) and returning users. Returns access token, refresh token, and user info.'
+    description:
+      'Handles both first-time social login (creates account) and returning users. Returns access token, refresh token, and user info.',
   })
   @ApiResponse({
     status: 200,
@@ -174,9 +179,10 @@ export class AuthController {
   }
 
   @Post('auth_users')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Create or update Google OAuth user',
-    description: 'Creates a new user with OAuth tokens or updates tokens if the user exists'
+    description:
+      'Creates a new user with OAuth tokens or updates tokens if the user exists',
   })
   @ApiResponse({
     status: 201,
@@ -192,9 +198,10 @@ export class AuthController {
   }
 
   @Patch('users/:userId/tokens')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: "Update user's Google OAuth tokens",
-    description: 'Update a user\'s Google OAuth access token and optionally refresh token'
+    description:
+      "Update a user's Google OAuth access token and optionally refresh token",
   })
   @ApiResponse({
     status: 200,

@@ -76,14 +76,16 @@ export class FirebaseService {
       this.logger.log(`Successfully sent notification: ${response}`);
     } catch (error) {
       this.logger.error(`Error sending notification: ${error.message}`);
-      
+
       // Handle specific FCM errors
-      if (error.code === 'messaging/invalid-registration-token' ||
-          error.code === 'messaging/registration-token-not-registered') {
+      if (
+        error.code === 'messaging/invalid-registration-token' ||
+        error.code === 'messaging/registration-token-not-registered'
+      ) {
         this.logger.warn(`Invalid or expired FCM token for bill ${billId}`);
         // You might want to mark this token as invalid in the database
       }
-      
+
       throw error;
     }
   }
@@ -99,7 +101,7 @@ export class FirebaseService {
   ): Promise<{ successCount: number; failureCount: number; responses: any[] }> {
     try {
       // Create individual messages for each token
-      const messages: admin.messaging.Message[] = fcmTokens.map(token => ({
+      const messages: admin.messaging.Message[] = fcmTokens.map((token) => ({
         token,
         notification: {
           title,
@@ -125,13 +127,19 @@ export class FirebaseService {
 
       // Send messages individually
       const responses = await Promise.allSettled(
-        messages.map(message => admin.messaging().send(message))
+        messages.map((message) => admin.messaging().send(message)),
       );
 
-      const successCount = responses.filter(r => r.status === 'fulfilled').length;
-      const failureCount = responses.filter(r => r.status === 'rejected').length;
+      const successCount = responses.filter(
+        (r) => r.status === 'fulfilled',
+      ).length;
+      const failureCount = responses.filter(
+        (r) => r.status === 'rejected',
+      ).length;
 
-      this.logger.log(`Successfully sent ${successCount} notifications, ${failureCount} failed`);
+      this.logger.log(
+        `Successfully sent ${successCount} notifications, ${failureCount} failed`,
+      );
 
       return {
         successCount,
@@ -160,16 +168,20 @@ export class FirebaseService {
           await this.sendCustomNotification(token, title, body, data);
           return { success: true, token };
         } catch (error) {
-          this.logger.error(`Failed to send to token ${token}: ${error.message}`);
+          this.logger.error(
+            `Failed to send to token ${token}: ${error.message}`,
+          );
           return { success: false, token, error: error.message };
         }
       });
 
       const results = await Promise.all(promises);
-      const successCount = results.filter(r => r.success).length;
-      const failureCount = results.filter(r => !r.success).length;
+      const successCount = results.filter((r) => r.success).length;
+      const failureCount = results.filter((r) => !r.success).length;
 
-      this.logger.log(`Batch notification results: ${successCount} success, ${failureCount} failed`);
+      this.logger.log(
+        `Batch notification results: ${successCount} success, ${failureCount} failed`,
+      );
     } catch (error) {
       this.logger.error(`Error in sendToMultipleTokens: ${error.message}`);
       throw error;
@@ -328,11 +340,17 @@ export class FirebaseService {
    */
   async subscribeToTopic(fcmTokens: string[], topic: string): Promise<void> {
     try {
-      const response = await admin.messaging().subscribeToTopic(fcmTokens, topic);
-      this.logger.log(`Successfully subscribed ${response.successCount} tokens to topic: ${topic}`);
-      
+      const response = await admin
+        .messaging()
+        .subscribeToTopic(fcmTokens, topic);
+      this.logger.log(
+        `Successfully subscribed ${response.successCount} tokens to topic: ${topic}`,
+      );
+
       if (response.failureCount > 0) {
-        this.logger.warn(`Failed to subscribe ${response.failureCount} tokens to topic: ${topic}`);
+        this.logger.warn(
+          `Failed to subscribe ${response.failureCount} tokens to topic: ${topic}`,
+        );
       }
     } catch (error) {
       this.logger.error(`Error subscribing to topic: ${error.message}`);
@@ -343,13 +361,22 @@ export class FirebaseService {
   /**
    * Unsubscribe tokens from a topic
    */
-  async unsubscribeFromTopic(fcmTokens: string[], topic: string): Promise<void> {
+  async unsubscribeFromTopic(
+    fcmTokens: string[],
+    topic: string,
+  ): Promise<void> {
     try {
-      const response = await admin.messaging().unsubscribeFromTopic(fcmTokens, topic);
-      this.logger.log(`Successfully unsubscribed ${response.successCount} tokens from topic: ${topic}`);
-      
+      const response = await admin
+        .messaging()
+        .unsubscribeFromTopic(fcmTokens, topic);
+      this.logger.log(
+        `Successfully unsubscribed ${response.successCount} tokens from topic: ${topic}`,
+      );
+
       if (response.failureCount > 0) {
-        this.logger.warn(`Failed to unsubscribe ${response.failureCount} tokens from topic: ${topic}`);
+        this.logger.warn(
+          `Failed to unsubscribe ${response.failureCount} tokens from topic: ${topic}`,
+        );
       }
     } catch (error) {
       this.logger.error(`Error unsubscribing from topic: ${error.message}`);

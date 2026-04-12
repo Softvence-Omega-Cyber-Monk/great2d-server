@@ -24,36 +24,36 @@ export class SocialLoginDto {
   @IsNotEmpty()
   fullName: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: 'google',
     enum: SocialProvider,
-    description: 'Social provider used for authentication'
+    description: 'Social provider used for authentication',
   })
   @IsEnum(SocialProvider)
   @IsNotEmpty()
   provider: SocialProvider;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: '123456789',
-    description: 'Unique ID from the social provider'
+    description: 'Unique ID from the social provider',
   })
   @IsString()
   @IsNotEmpty()
   providerId: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: 'https://example.com/photo.jpg',
     required: false,
-    description: 'Profile picture URL from social provider'
+    description: 'Profile picture URL from social provider',
   })
   @IsString()
   @IsOptional()
   profilePictureUrl?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: 'fcm_token_here',
     required: false,
-    description: 'Firebase Cloud Messaging token for push notifications'
+    description: 'Firebase Cloud Messaging token for push notifications',
   })
   @IsString()
   @IsOptional()

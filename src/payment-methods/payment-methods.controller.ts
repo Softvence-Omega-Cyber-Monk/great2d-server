@@ -29,9 +29,7 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 @UseGuards(JwtGuard)
 @ApiBearerAuth('JWT-auth')
 export class PaymentMethodsController {
-  constructor(
-    private readonly paymentMethodsService: PaymentMethodsService,
-  ) {}
+  constructor(private readonly paymentMethodsService: PaymentMethodsService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new payment method' })
@@ -87,13 +85,20 @@ export class PaymentMethodsController {
     @GetUser('userId') userId: string,
     @Body() updatePaymentMethodDto: UpdatePaymentMethodDto,
   ) {
-    return this.paymentMethodsService.update(id, userId, updatePaymentMethodDto);
+    return this.paymentMethodsService.update(
+      id,
+      userId,
+      updatePaymentMethodDto,
+    );
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete payment method' })
   @ApiParam({ name: 'id', description: 'Payment method ID' })
-  @ApiResponse({ status: 200, description: 'Payment method deleted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Payment method deleted successfully',
+  })
   @ApiResponse({ status: 404, description: 'Payment method not found' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   remove(@Param('id') id: string, @GetUser('userId') userId: string) {

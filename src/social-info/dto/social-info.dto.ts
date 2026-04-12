@@ -2,18 +2,18 @@ import { IsEmail, IsString, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateEmailDto {
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Email address',
-    example: 'user@example.com'
+    example: 'user@example.com',
   })
   @IsEmail()
   email: string;
 }
 
 export class CreatePhoneDto {
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Phone number in E.164 format',
-    example: '+8801712345678'
+    example: '+8801712345678',
   })
   @IsString()
   @Matches(/^\+?[1-9]\d{1,14}$/, {
@@ -23,9 +23,9 @@ export class CreatePhoneDto {
 }
 
 export class CreateWhatsAppDto {
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'WhatsApp number in E.164 format',
-    example: '+8801712345678'
+    example: '+8801712345678',
   })
   @IsString()
   @Matches(/^\+?[1-9]\d{1,14}$/, {
@@ -35,18 +35,18 @@ export class CreateWhatsAppDto {
 }
 
 export class UpdateEmailDto {
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Email address to update',
-    example: 'newemail@example.com'
+    example: 'newemail@example.com',
   })
   @IsEmail()
   email: string;
 }
 
 export class UpdatePhoneDto {
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Phone number to update in E.164 format',
-    example: '+8801712345678'
+    example: '+8801712345678',
   })
   @IsString()
   @Matches(/^\+?[1-9]\d{1,14}$/, {
@@ -56,9 +56,9 @@ export class UpdatePhoneDto {
 }
 
 export class UpdateWhatsAppDto {
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'WhatsApp number to update in E.164 format',
-    example: '+8801712345678'
+    example: '+8801712345678',
   })
   @IsString()
   @Matches(/^\+?[1-9]\d{1,14}$/, {

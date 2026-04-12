@@ -1,10 +1,18 @@
 // paypal/paypal.service.ts
 
-import { Injectable, BadRequestException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
-import { CreatePayPalPaymentDto, RefundPayPalPaymentDto } from './dto/paypal.dto';
+import {
+  CreatePayPalPaymentDto,
+  RefundPayPalPaymentDto,
+} from './dto/paypal.dto';
 import { PayPalPaymentStatus } from 'generated/prisma';
 
 @Injectable()
@@ -20,10 +28,11 @@ export class PayPalService {
     private configService: ConfigService,
   ) {
     const mode = this.configService.get<string>('paypal.mode');
-    this.baseURL = mode === 'live' 
-      ? 'https://api-m.paypal.com'
-      : 'https://api-m.sandbox.paypal.com';
-    
+    this.baseURL =
+      mode === 'live'
+        ? 'https://api-m.paypal.com'
+        : 'https://api-m.sandbox.paypal.com';
+
     this.clientId = this.configService.get<string>('paypal.clientId')!;
     this.clientSecret = this.configService.get<string>('paypal.clientSecret')!;
     this.returnUrl = this.configService.get<string>('paypal.returnUrl')!;
@@ -35,23 +44,30 @@ export class PayPalService {
    */
   private async getAccessToken(): Promise<string> {
     try {
-      const auth = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
-      
+      const auth = Buffer.from(
+        `${this.clientId}:${this.clientSecret}`,
+      ).toString('base64');
+
       const response = await axios.post(
         `${this.baseURL}/v1/oauth2/token`,
         'grant_type=client_credentials',
         {
           headers: {
-            'Authorization': `Basic ${auth}`,
+            Authorization: `Basic ${auth}`,
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-        }
+        },
       );
 
       return response.data.access_token;
     } catch (error) {
-      console.error('PayPal authentication error:', error.response?.data || error.message);
-      throw new InternalServerErrorException('Failed to authenticate with PayPal');
+      console.error(
+        'PayPal authentication error:',
+        error.response?.data || error.message,
+      );
+      throw new InternalServerErrorException(
+        'Failed to authenticate with PayPal',
+      );
     }
   }
 
@@ -87,15 +103,15 @@ export class PayPalService {
         orderData,
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
       const orderId = response.data.id;
       const approvalUrl = response.data.links.find(
-        (link: any) => link.rel === 'approve'
+        (link: any) => link.rel === 'approve',
       )?.href;
 
       // Save payment record to database
@@ -117,9 +133,12 @@ export class PayPalService {
         paymentId: payment.id,
       };
     } catch (error) {
-      console.error('PayPal order creation error:', error.response?.data || error.message);
+      console.error(
+        'PayPal order creation error:',
+        error.response?.data || error.message,
+      );
       throw new BadRequestException(
-        error.response?.data?.message || 'Failed to create PayPal order'
+        error.response?.data?.message || 'Failed to create PayPal order',
       );
     }
   }
@@ -130,7 +149,7 @@ export class PayPalService {
   async capturePayment(userId: string, orderId: string) {
     // Find payment record
     const payment = await this.prisma.payPalPayment.findFirst({
-      where: { paypalOrderId: orderId, userId }
+      where: { paypalOrderId: orderId, userId },
     });
 
     if (!payment) {
@@ -154,16 +173,18 @@ export class PayPalService {
         {},
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
       const captureData = response.data;
-      const captureId = captureData.purchase_units[0]?.payments?.captures[0]?.id;
+      const captureId =
+        captureData.purchase_units[0]?.payments?.captures[0]?.id;
       const payerEmail = captureData.payer?.email_address;
-      const payerName = `${captureData.payer?.name?.given_name || ''} ${captureData.payer?.name?.surname || ''}`.trim();
+      const payerName =
+        `${captureData.payer?.name?.given_name || ''} ${captureData.payer?.name?.surname || ''}`.trim();
       const payerId = captureData.payer?.payer_id;
 
       // Update payment record
@@ -181,8 +202,11 @@ export class PayPalService {
 
       return updatedPayment;
     } catch (error) {
-      console.error('PayPal capture error:', error.response?.data || error.message);
-      
+      console.error(
+        'PayPal capture error:',
+        error.response?.data || error.message,
+      );
+
       // Update payment as failed
       await this.prisma.payPalPayment.update({
         where: { id: payment.id },
@@ -193,7 +217,7 @@ export class PayPalService {
       });
 
       throw new BadRequestException(
-        error.response?.data?.message || 'Failed to capture payment'
+        error.response?.data?.message || 'Failed to capture payment',
       );
     }
   }
@@ -228,7 +252,7 @@ export class PayPalService {
    */
   async refundPayment(userId: string, refundDto: RefundPayPalPaymentDto) {
     const payment = await this.prisma.payPalPayment.findFirst({
-      where: { id: refundDto.paymentId, userId }
+      where: { id: refundDto.paymentId, userId },
     });
 
     if (!payment) {
@@ -262,10 +286,10 @@ export class PayPalService {
         refundData,
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
       const refundId = response.data.id;
@@ -282,9 +306,12 @@ export class PayPalService {
 
       return updatedPayment;
     } catch (error) {
-      console.error('PayPal refund error:', error.response?.data || error.message);
+      console.error(
+        'PayPal refund error:',
+        error.response?.data || error.message,
+      );
       throw new BadRequestException(
-        error.response?.data?.message || 'Failed to process refund'
+        error.response?.data?.message || 'Failed to process refund',
       );
     }
   }
@@ -294,7 +321,7 @@ export class PayPalService {
    */
   async cancelPayment(userId: string, paymentId: string) {
     const payment = await this.prisma.payPalPayment.findFirst({
-      where: { id: paymentId, userId }
+      where: { id: paymentId, userId },
     });
 
     if (!payment) {
@@ -343,9 +370,9 @@ export class PayPalService {
 
   private async handlePaymentCompleted(resource: any) {
     const captureId = resource.id;
-    
+
     const payment = await this.prisma.payPalPayment.findFirst({
-      where: { paypalPaymentId: captureId }
+      where: { paypalPaymentId: captureId },
     });
 
     if (payment && payment.status !== PayPalPaymentStatus.completed) {
@@ -358,17 +385,17 @@ export class PayPalService {
 
   private async handlePaymentFailed(resource: any) {
     const captureId = resource.id;
-    
+
     const payment = await this.prisma.payPalPayment.findFirst({
-      where: { paypalPaymentId: captureId }
+      where: { paypalPaymentId: captureId },
     });
 
     if (payment) {
       await this.prisma.payPalPayment.update({
         where: { id: payment.id },
-        data: { 
+        data: {
           status: PayPalPaymentStatus.failed,
-          errorMessage: resource.status_details?.reason || 'Payment failed'
+          errorMessage: resource.status_details?.reason || 'Payment failed',
         },
       });
     }
@@ -376,17 +403,17 @@ export class PayPalService {
 
   private async handlePaymentRefunded(resource: any) {
     const captureId = resource.id;
-    
+
     const payment = await this.prisma.payPalPayment.findFirst({
-      where: { paypalPaymentId: captureId }
+      where: { paypalPaymentId: captureId },
     });
 
     if (payment) {
       await this.prisma.payPalPayment.update({
         where: { id: payment.id },
-        data: { 
+        data: {
           status: PayPalPaymentStatus.refunded,
-          refundedAt: new Date()
+          refundedAt: new Date(),
         },
       });
     }

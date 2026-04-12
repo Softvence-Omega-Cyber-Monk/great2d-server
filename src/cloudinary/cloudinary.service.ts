@@ -12,7 +12,10 @@ export class CloudinaryService {
     });
   }
 
-  async uploadImage(file: any, folder: string = 'user-profiles'): Promise<string> {
+  async uploadImage(
+    file: any,
+    folder: string = 'user-profiles',
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
@@ -21,8 +24,8 @@ export class CloudinaryService {
           transformation: [
             { width: 500, height: 500, crop: 'limit' },
             { quality: 'auto' },
-            { fetch_format: 'auto' }
-          ]
+            { fetch_format: 'auto' },
+          ],
         },
         (error, result: UploadApiResponse | undefined) => {
           if (error) {
@@ -32,7 +35,7 @@ export class CloudinaryService {
           } else {
             reject(new Error('Upload failed: No result returned'));
           }
-        }
+        },
       );
 
       uploadStream.end(file.buffer);

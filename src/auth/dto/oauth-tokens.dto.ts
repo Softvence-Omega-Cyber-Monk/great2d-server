@@ -1,10 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsEmail,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateOrUpdateOAuthUserDto {
   @ApiProperty({ example: 'user@gmail.com' })
@@ -12,17 +7,17 @@ export class CreateOrUpdateOAuthUserDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: 'ya29.a0AfH6SMBx...',
-    description: 'Google OAuth access token'
+    description: 'Google OAuth access token',
   })
   @IsString()
   @IsNotEmpty()
   access_token: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: '1//0gZ8xYz...',
-    description: 'Google OAuth refresh token'
+    description: 'Google OAuth refresh token',
   })
   @IsString()
   @IsNotEmpty()
@@ -30,18 +25,18 @@ export class CreateOrUpdateOAuthUserDto {
 }
 
 export class UpdateOAuthTokensDto {
-  @ApiProperty({ 
+  @ApiProperty({
     example: 'ya29.a0AfH6SMBx...',
-    description: 'Google OAuth access token'
+    description: 'Google OAuth access token',
   })
   @IsString()
   @IsNotEmpty()
   access_token: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: '1//0gZ8xYz...',
     required: false,
-    description: 'Google OAuth refresh token (optional)'
+    description: 'Google OAuth refresh token (optional)',
   })
   @IsString()
   @IsOptional()

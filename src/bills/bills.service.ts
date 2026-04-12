@@ -1,7 +1,7 @@
 import {
   Injectable,
   NotFoundException,
-  ForbiddenException
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { FirebaseService } from 'src/firebase/firebase.service';
@@ -10,7 +10,7 @@ import {
   CreateBillDto,
   UpdateBillDto,
   SetSavingsGoalDto,
-  CreateEmailReplyDto
+  CreateEmailReplyDto,
 } from './dto/bill.dto';
 import { NotificationType } from 'src/notification/notification.dto';
 
@@ -20,9 +20,9 @@ export class BillService {
     private prisma: PrismaService,
     private firebaseService: FirebaseService,
     private notificationService: NotificationService,
-  ) { }
+  ) {}
 
-  //  BILL METHODS 
+  //  BILL METHODS
 
   async createBill(userId: string, dto: CreateBillDto) {
     const user = await this.prisma.user.findUnique({
@@ -46,7 +46,7 @@ export class BillService {
         status: dto.status || 'draft',
         actualAmount: dto.actualAmount,
         negotiatedAmount: dto.negotiatedAmount,
-      }
+      },
     });
 
     return bill;
@@ -58,9 +58,9 @@ export class BillService {
       orderBy: { createdAt: 'desc' },
       include: {
         _count: {
-          select: { billTrackings: true }
-        }
-      }
+          select: { billTrackings: true },
+        },
+      },
     });
   }
 
@@ -68,9 +68,9 @@ export class BillService {
     return this.prisma.bill.findMany({
       where: {
         userId,
-        status: status
+        status: status,
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -80,9 +80,9 @@ export class BillService {
       include: {
         billTrackings: {
           orderBy: { month: 'desc' },
-          take: 12
-        }
-      }
+          take: 12,
+        },
+      },
     });
 
     if (!bill) {
@@ -98,7 +98,7 @@ export class BillService {
 
   async updateBill(userId: string, id: string, dto: UpdateBillDto) {
     const bill = await this.prisma.bill.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!bill) {
@@ -118,7 +118,8 @@ export class BillService {
         providerName: dto.providerName ?? bill.providerName,
         category: dto.category ?? bill.category,
         accountDetails: dto.accountDetails ?? bill.accountDetails,
-        negotiationRecommendation: dto.negotiationRecommendation ?? bill.negotiationRecommendation,
+        negotiationRecommendation:
+          dto.negotiationRecommendation ?? bill.negotiationRecommendation,
         emailSubject: dto.emailSubject ?? bill.emailSubject,
         emailBody: dto.emailBody ?? bill.emailBody,
         emailThreadId: dto.emailThreadId ?? bill.emailThreadId,
@@ -127,7 +128,7 @@ export class BillService {
         sentAt: dto.sentAt ?? bill.sentAt,
         actualAmount: dto.actualAmount ?? bill.actualAmount,
         negotiatedAmount: dto.negotiatedAmount ?? bill.negotiatedAmount,
-      }
+      },
     });
 
     // Send notification if status changed
@@ -140,7 +141,7 @@ export class BillService {
 
   async deleteBill(userId: string, id: string) {
     const bill = await this.prisma.bill.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!bill) {
@@ -155,9 +156,14 @@ export class BillService {
     return { message: `Bill deleted successfully` };
   }
 
-  async markBillAsSent(userId: string, id: string, emailThreadId?: string, emailMessageId?: string) {
+  async markBillAsSent(
+    userId: string,
+    id: string,
+    emailThreadId?: string,
+    emailMessageId?: string,
+  ) {
     const bill = await this.prisma.bill.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!bill) {
@@ -176,7 +182,7 @@ export class BillService {
         sentAt: new Date(),
         emailThreadId,
         emailMessageId,
-      }
+      },
     });
 
     // Send notification
@@ -189,7 +195,7 @@ export class BillService {
 
   async updateBillStatus(userId: string, id: string, status: string) {
     const bill = await this.prisma.bill.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!bill) {
@@ -203,7 +209,7 @@ export class BillService {
     const oldStatus = bill.status;
     const updatedBill = await this.prisma.bill.update({
       where: { id },
-      data: { status: status }
+      data: { status: status },
     });
 
     // Send notification
@@ -221,10 +227,10 @@ export class BillService {
     billId: string,
     status: string,
     actualAmount?: number,
-    negotiatedAmount?: number
+    negotiatedAmount?: number,
   ) {
     const bill = await this.prisma.bill.findUnique({
-      where: { id: billId }
+      where: { id: billId },
     });
 
     if (!bill) {
@@ -241,11 +247,12 @@ export class BillService {
     // Build update data
     const updateData: any = { status };
     if (actualAmount !== undefined) updateData.actualAmount = actualAmount;
-    if (negotiatedAmount !== undefined) updateData.negotiatedAmount = negotiatedAmount;
+    if (negotiatedAmount !== undefined)
+      updateData.negotiatedAmount = negotiatedAmount;
 
     const updatedBill = await this.prisma.bill.update({
       where: { id: billId },
-      data: updateData
+      data: updateData,
     });
 
     // Send notification if status changed
@@ -256,7 +263,7 @@ export class BillService {
     return {
       success: true,
       message: 'Bill status updated successfully',
-      bill: updatedBill
+      bill: updatedBill,
     };
   }
 
@@ -267,9 +274,9 @@ export class BillService {
       where: { emailThreadId: threadId },
       include: {
         emailReplies: {
-          orderBy: { receivedAt: 'desc' }
-        }
-      }
+          orderBy: { receivedAt: 'desc' },
+        },
+      },
     });
 
     if (!bill) {
@@ -283,8 +290,8 @@ export class BillService {
     const bills = await this.prisma.bill.findMany({
       where: {
         status: {
-          in: ['sent', 'negotiating']
-        }
+          in: ['sent', 'negotiating'],
+        },
       },
       orderBy: { updatedAt: 'desc' },
       include: {
@@ -292,19 +299,19 @@ export class BillService {
           select: {
             userId: true,
             email: true,
-            fullName: true
-          }
+            fullName: true,
+          },
         },
         emailReplies: {
           orderBy: { receivedAt: 'desc' },
-          take: 1
-        }
-      }
+          take: 1,
+        },
+      },
     });
 
     return {
       count: bills.length,
-      pendingBills: bills
+      pendingBills: bills,
     };
   }
 
@@ -312,7 +319,7 @@ export class BillService {
 
   async createEmailReply(billId: string, dto: CreateEmailReplyDto) {
     const bill = await this.prisma.bill.findUnique({
-      where: { id: billId }
+      where: { id: billId },
     });
 
     if (!bill) {
@@ -329,31 +336,35 @@ export class BillService {
         subject: dto.subject,
         body: dto.body,
         snippet: dto.snippet,
-        receivedAt: new Date(dto.receivedAt)
-      }
+        receivedAt: new Date(dto.receivedAt),
+      },
     });
 
     // Update bill status to 'negotiating' if it was 'sent'
     if (bill.status === 'sent') {
       await this.prisma.bill.update({
         where: { id: billId },
-        data: { status: 'negotiating' }
+        data: { status: 'negotiating' },
       });
 
       // Send notification about status change
-      await this.sendStatusChangeNotification(bill.userId, { ...bill, status: 'negotiating' }, 'sent');
+      await this.sendStatusChangeNotification(
+        bill.userId,
+        { ...bill, status: 'negotiating' },
+        'sent',
+      );
     }
 
     return {
       success: true,
       message: 'Email reply created successfully',
-      reply: emailReply
+      reply: emailReply,
     };
   }
 
   async getAllRepliesForBill(billId: string) {
     const bill = await this.prisma.bill.findUnique({
-      where: { id: billId }
+      where: { id: billId },
     });
 
     if (!bill) {
@@ -362,19 +373,19 @@ export class BillService {
 
     const replies = await this.prisma.emailReply.findMany({
       where: { billId },
-      orderBy: { receivedAt: 'desc' }
+      orderBy: { receivedAt: 'desc' },
     });
 
     return {
       billId,
       count: replies.length,
-      replies
+      replies,
     };
   }
 
   async getLatestReplyForBill(billId: string) {
     const bill = await this.prisma.bill.findUnique({
-      where: { id: billId }
+      where: { id: billId },
     });
 
     if (!bill) {
@@ -383,7 +394,7 @@ export class BillService {
 
     const latestReply = await this.prisma.emailReply.findFirst({
       where: { billId },
-      orderBy: { receivedAt: 'desc' }
+      orderBy: { receivedAt: 'desc' },
     });
 
     if (!latestReply) {
@@ -395,19 +406,27 @@ export class BillService {
 
   // ==================== NOTIFICATION HELPER ====================
 
-  private async sendStatusChangeNotification(userId: string, bill: any, oldStatus: string) {
+  private async sendStatusChangeNotification(
+    userId: string,
+    bill: any,
+    oldStatus: string,
+  ) {
     try {
       // Get user with FCM token
       const user = await this.prisma.user.findUnique({
         where: { userId },
         select: {
           fcmToken: true,
-          isNotificationsEnabled: true
-        }
+          isNotificationsEnabled: true,
+        },
       });
 
       const providerName = bill.providerName || bill.providerEmail;
-      const { title, body } = this.getNotificationContent(providerName, oldStatus, bill.status);
+      const { title, body } = this.getNotificationContent(
+        providerName,
+        oldStatus,
+        bill.status,
+      );
 
       // 1. Save notification to database
       await this.notificationService.createNotification({
@@ -432,11 +451,13 @@ export class BillService {
           providerName,
           oldStatus,
           bill.status,
-          bill.id
+          bill.id,
         );
         console.log(`Push notification sent successfully for bill ${bill.id}`);
       } else {
-        console.log(`Push notification skipped for bill ${bill.id} - No FCM token or notifications disabled`);
+        console.log(
+          `Push notification skipped for bill ${bill.id} - No FCM token or notifications disabled`,
+        );
       }
 
       console.log(`Notification saved to database for bill ${bill.id}`);
@@ -491,7 +512,10 @@ export class BillService {
 
   // ==================== SAVINGS CALCULATION HELPER ====================
 
-  private calculateSavings(actualAmount: number | null, negotiatedAmount: number | null): number {
+  private calculateSavings(
+    actualAmount: number | null,
+    negotiatedAmount: number | null,
+  ): number {
     if (!actualAmount || !negotiatedAmount) {
       return 0;
     }
@@ -504,12 +528,12 @@ export class BillService {
     const count = await this.prisma.bill.count({
       where: {
         userId,
-        status: 'negotiating'
-      }
+        status: 'negotiating',
+      },
     });
 
     return {
-      activeNegotiationsCount: count
+      activeNegotiationsCount: count,
     };
   }
 
@@ -518,29 +542,37 @@ export class BillService {
       where: {
         userId,
         status: {
-          in: ['negotiating', 'successful', 'sent']
-        }
+          in: ['negotiating', 'successful', 'sent'],
+        },
       },
       orderBy: { updatedAt: 'desc' },
       take: limit,
       include: {
         billTrackings: {
           orderBy: { month: 'desc' },
-          take: 1
-        }
-      }
+          take: 1,
+        },
+      },
     });
 
     return {
       count: bills.length,
-      negotiations: bills
+      negotiations: bills,
     };
   }
 
   async getThisMonthSavings(userId: string) {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
     const successfulBills = await this.prisma.bill.findMany({
       where: {
@@ -548,20 +580,23 @@ export class BillService {
         status: 'successful',
         updatedAt: {
           gte: startOfMonth,
-          lte: endOfMonth
-        }
+          lte: endOfMonth,
+        },
       },
       select: {
         id: true,
         actualAmount: true,
         negotiatedAmount: true,
         providerName: true,
-        providerEmail: true
-      }
+        providerEmail: true,
+      },
     });
 
     const totalSavings = successfulBills.reduce((sum, bill) => {
-      const savings = this.calculateSavings(bill.actualAmount, bill.negotiatedAmount);
+      const savings = this.calculateSavings(
+        bill.actualAmount,
+        bill.negotiatedAmount,
+      );
       return sum + savings;
     }, 0);
 
@@ -569,7 +604,7 @@ export class BillService {
       month: now.getMonth() + 1,
       year: now.getFullYear(),
       totalSavings: parseFloat(totalSavings.toFixed(2)),
-      billsCount: successfulBills.length
+      billsCount: successfulBills.length,
     };
   }
 
@@ -577,32 +612,35 @@ export class BillService {
     const successfulBills = await this.prisma.bill.findMany({
       where: {
         userId,
-        status: 'successful'
+        status: 'successful',
       },
       select: {
         id: true,
         actualAmount: true,
         negotiatedAmount: true,
         providerName: true,
-        providerEmail: true
-      }
+        providerEmail: true,
+      },
     });
 
     const totalSavings = successfulBills.reduce((sum, bill) => {
-      const savings = this.calculateSavings(bill.actualAmount, bill.negotiatedAmount);
+      const savings = this.calculateSavings(
+        bill.actualAmount,
+        bill.negotiatedAmount,
+      );
       return sum + savings;
     }, 0);
 
     return {
       totalSavings: parseFloat(totalSavings.toFixed(2)),
-      successfulBillsCount: successfulBills.length
+      successfulBillsCount: successfulBills.length,
     };
   }
 
   async getSavingsByCategory(userId: string, month?: number, year?: number) {
-    let whereClause: any = {
+    const whereClause: any = {
       userId,
-      status: 'successful'
+      status: 'successful',
     };
 
     if (month && year) {
@@ -611,7 +649,7 @@ export class BillService {
 
       whereClause.updatedAt = {
         gte: startDate,
-        lte: endDate
+        lte: endDate,
       };
     }
 
@@ -621,18 +659,24 @@ export class BillService {
         id: true,
         category: true,
         actualAmount: true,
-        negotiatedAmount: true
-      }
+        negotiatedAmount: true,
+      },
     });
 
     // Group by category
-    const categoryMap = new Map<string, { category: string; savings: number; count: number }>();
+    const categoryMap = new Map<
+      string,
+      { category: string; savings: number; count: number }
+    >();
 
-    successfulBills.forEach(bill => {
+    successfulBills.forEach((bill) => {
       const category = bill.category || 'other';
       const existing = categoryMap.get(category);
 
-      const savings = this.calculateSavings(bill.actualAmount, bill.negotiatedAmount);
+      const savings = this.calculateSavings(
+        bill.actualAmount,
+        bill.negotiatedAmount,
+      );
 
       if (existing) {
         existing.savings += savings;
@@ -641,19 +685,27 @@ export class BillService {
         categoryMap.set(category, {
           category,
           savings,
-          count: 1
+          count: 1,
         });
       }
     });
 
-    const totalSavings = Array.from(categoryMap.values()).reduce((sum, val) => sum + val.savings, 0);
+    const totalSavings = Array.from(categoryMap.values()).reduce(
+      (sum, val) => sum + val.savings,
+      0,
+    );
 
-    const savingsByCategory = Array.from(categoryMap.values()).map(({ category, savings, count }) => ({
-      category,
-      savingsAmount: parseFloat(savings.toFixed(2)),
-      billsCount: count,
-      percentage: totalSavings > 0 ? parseFloat(((savings / totalSavings) * 100).toFixed(2)) : 0
-    }));
+    const savingsByCategory = Array.from(categoryMap.values()).map(
+      ({ category, savings, count }) => ({
+        category,
+        savingsAmount: parseFloat(savings.toFixed(2)),
+        billsCount: count,
+        percentage:
+          totalSavings > 0
+            ? parseFloat(((savings / totalSavings) * 100).toFixed(2))
+            : 0,
+      }),
+    );
 
     // Sort by savings amount (highest first)
     savingsByCategory.sort((a, b) => b.savingsAmount - a.savingsAmount);
@@ -661,7 +713,7 @@ export class BillService {
     return {
       period: month && year ? { month, year } : 'all-time',
       totalSavings: parseFloat(totalSavings.toFixed(2)),
-      categories: savingsByCategory
+      categories: savingsByCategory,
     };
   }
 
@@ -704,19 +756,19 @@ export class BillService {
 
   async getBillsStats(userId: string) {
     const bills = await this.prisma.bill.findMany({
-      where: { userId }
+      where: { userId },
     });
 
     const stats = {
       total: bills.length,
       byStatus: {
-        draft: bills.filter(b => b.status === 'draft').length,
-        sent: bills.filter(b => b.status === 'sent').length,
-        negotiating: bills.filter(b => b.status === 'negotiating').length,
-        successful: bills.filter(b => b.status === 'successful').length,
-        failed: bills.filter(b => b.status === 'failed').length,
-        cancelled: bills.filter(b => b.status === 'cancelled').length,
-      }
+        draft: bills.filter((b) => b.status === 'draft').length,
+        sent: bills.filter((b) => b.status === 'sent').length,
+        negotiating: bills.filter((b) => b.status === 'negotiating').length,
+        successful: bills.filter((b) => b.status === 'successful').length,
+        failed: bills.filter((b) => b.status === 'failed').length,
+        cancelled: bills.filter((b) => b.status === 'cancelled').length,
+      },
     };
 
     return stats;
@@ -726,7 +778,7 @@ export class BillService {
     return this.prisma.bill.findMany({
       where: { userId },
       orderBy: { updatedAt: 'desc' },
-      take: limit
+      take: limit,
     });
   }
 
@@ -737,7 +789,7 @@ export class BillService {
       sentBills,
       negotiatingBills,
       successfulBills,
-      recentActivity
+      recentActivity,
     ] = await Promise.all([
       this.prisma.bill.count({ where: { userId } }),
       this.prisma.bill.count({ where: { userId, status: 'draft' } }),
@@ -747,8 +799,8 @@ export class BillService {
       this.prisma.bill.findMany({
         where: { userId },
         orderBy: { updatedAt: 'desc' },
-        take: 5
-      })
+        take: 5,
+      }),
     ]);
 
     return {
@@ -756,11 +808,15 @@ export class BillService {
       activeBills: sentBills + negotiatingBills,
       draftBills,
       successfulBills,
-      recentActivity
+      recentActivity,
     };
   }
 
-  async getAllBillsAdmin(status?: string, page: number = 1, limit: number = 50) {
+  async getAllBillsAdmin(
+    status?: string,
+    page: number = 1,
+    limit: number = 50,
+  ) {
     const skip = (page - 1) * limit;
 
     // Build where clause
@@ -790,14 +846,14 @@ export class BillService {
             createdAt: true,
             isDarkMode: true,
             isNotificationsEnabled: true,
-            isUsingBiometrics: true
-          }
-        }
-      }
+            isUsingBiometrics: true,
+          },
+        },
+      },
     });
 
     // Transform the data to include calculated savings
-    const transformedBills = bills.map(bill => ({
+    const transformedBills = bills.map((bill) => ({
       id: bill.id,
       userId: bill.userId,
       userEmail: bill.user?.email || 'N/A',
@@ -809,7 +865,7 @@ export class BillService {
       userPreferences: {
         isDarkMode: bill.user?.isDarkMode || false,
         isNotificationsEnabled: bill.user?.isNotificationsEnabled || true,
-        isUsingBiometrics: bill.user?.isUsingBiometrics || false
+        isUsingBiometrics: bill.user?.isUsingBiometrics || false,
       },
       providerEmail: bill.providerEmail,
       providerName: bill.providerName,
@@ -824,7 +880,7 @@ export class BillService {
       emailMessageId: bill.emailMessageId,
       createdAt: bill.createdAt,
       updatedAt: bill.updatedAt,
-      sentAt: bill.sentAt
+      sentAt: bill.sentAt,
     }));
 
     return {
@@ -833,25 +889,32 @@ export class BillService {
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limit),
       },
       summary: {
         totalBills: total,
-        statusBreakdown: await this.getAdminStatusBreakdown(whereClause)
-      }
+        statusBreakdown: await this.getAdminStatusBreakdown(whereClause),
+      },
     };
   }
 
   private async getAdminStatusBreakdown(whereClause: any) {
-    const statuses = ['draft', 'sent', 'negotiating', 'successful', 'failed', 'cancelled'];
+    const statuses = [
+      'draft',
+      'sent',
+      'negotiating',
+      'successful',
+      'failed',
+      'cancelled',
+    ];
 
     const breakdown = await Promise.all(
       statuses.map(async (status) => ({
         status,
         count: await this.prisma.bill.count({
-          where: { ...whereClause, status }
-        })
-      }))
+          where: { ...whereClause, status },
+        }),
+      })),
     );
 
     return breakdown;

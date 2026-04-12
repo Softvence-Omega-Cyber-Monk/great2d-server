@@ -128,6 +128,8 @@ model SubscriptionPlan {
   price              Float
   duration           Int // Duration in months
   features           String[]
+  appleProductId     String?  @unique // The unique product identifier defined in App Store Connect
+  applePricing       Float?   // Optional field for Apple pricing convention (e.g., 7.99, 11.99)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -136,15 +138,20 @@ model SubscriptionPlan {
 }
 
 model Subscription {
-  subscriptionId     String   @id @default(uuid())
-  userId             String
-  subscriptionPlanId String
-  transactionId      String   @unique
-  startDate          DateTime
-  expiresAt          DateTime
-  isActive           Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  subscriptionId        String   @id @default(uuid())
+  userId                String
+  subscriptionPlanId    String
+  transactionId         String   @unique
+  originalTransactionId String?  // Critical for tracking the lifecycle of an Apple subscription chain
+  platform              String   @default("stripe") // stripe, apple, paypal, etc.
+  purchaseToken         String?  @db.Text // Stores JWS or receipt token for backup/verification
+  environment           String?  // Sandbox or Production
+  appAccountToken       String?  // Optional custom token provided by Apple for user linking
+  startDate             DateTime
+  expiresAt             DateTime
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   //Relations
   user             User             @relation(fields: [userId], references: [userId], onDelete: Cascade)
@@ -153,6 +160,7 @@ model Subscription {
 
   @@index([userId])
   @@index([subscriptionPlanId])
+  @@index([originalTransactionId])
 }
 
 model PasswordReset {
