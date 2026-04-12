@@ -241,7 +241,7 @@ export class AppleIapService implements OnModuleInit {
 
     const now = new Date();
     const isNowActive = end > now;
-
+ 
     this.logger.log(`[VALIDATE] Transaction details:
       - Product ID: ${finalProductId}
       - Original TX ID: ${finalOriginalTransactionId}
