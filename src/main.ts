@@ -12,11 +12,11 @@ async function bootstrap() {
       'https://admin.billedsmart.com',
       'http://localhost:5173',
       'http://localhost:5174',
-      'http://148.230.81.16:3000'
+      'http://148.230.81.16:3000',
     ],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
   app.useGlobalPipes(
@@ -25,7 +25,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
       transform: true,
     }),
-  )
+  );
   const config = new DocumentBuilder()
     .setTitle('Great2D API')
     .setDescription('The Great2D API documentation')

@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { 
+import {
   CreateEmailDto,
   CreatePhoneDto,
   CreateWhatsAppDto,
-  UpdateEmailDto, 
-  UpdatePhoneDto, 
-  UpdateWhatsAppDto
+  UpdateEmailDto,
+  UpdatePhoneDto,
+  UpdateWhatsAppDto,
 } from './dto/social-info.dto';
 
 @Injectable()

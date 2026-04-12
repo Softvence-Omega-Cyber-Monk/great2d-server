@@ -36,7 +36,7 @@ import { UserRole } from 'generated/prisma';
 export class SubscriptionPlansController {
   constructor(
     private readonly subscriptionPlansService: SubscriptionPlansService,
-  ) { }
+  ) {}
 
   @Post()
   @UseGuards(JwtGuard)
@@ -47,7 +47,10 @@ export class SubscriptionPlansController {
     description: 'Subscription plan created successfully',
     type: SubscriptionPlanResponseDto,
   })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
   create(@Body() createSubscriptionPlanDto: CreateSubscriptionPlanDto) {
     return this.subscriptionPlansService.create(createSubscriptionPlanDto);
   }
@@ -55,19 +58,24 @@ export class SubscriptionPlansController {
   @Get('subscriptions/all')
   @UseGuards(JwtGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Get all subscriptions made by all users (Admin only)' })
+  @ApiOperation({
+    summary: 'Get all subscriptions made by all users (Admin only)',
+  })
   @ApiQuery({
     name: 'status',
     required: false,
     enum: ['active', 'expired', 'all'],
-    description: 'Filter by subscription status'
+    description: 'Filter by subscription status',
   })
   @ApiResponse({
     status: 200,
     description: 'Return all subscriptions',
     type: [SubscriptionResponseDto],
   })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
   getAllSubscriptions(@Query('status') status?: 'active' | 'expired' | 'all') {
     return this.subscriptionPlansService.getAllSubscriptions(status);
   }
@@ -75,34 +83,43 @@ export class SubscriptionPlansController {
   @Get('subscriptions/graph-data')
   @UseGuards(JwtGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Get subscription graph data for analytics (Admin only)' })
+  @ApiOperation({
+    summary: 'Get subscription graph data for analytics (Admin only)',
+  })
   @ApiQuery({
     name: 'period',
     required: false,
     enum: ['daily', 'weekly', 'monthly', 'yearly'],
-    description: 'Time period for grouping data'
+    description: 'Time period for grouping data',
   })
   @ApiQuery({
     name: 'startDate',
     required: false,
-    description: 'Start date for filtering (ISO 8601 format)'
+    description: 'Start date for filtering (ISO 8601 format)',
   })
   @ApiQuery({
     name: 'endDate',
     required: false,
-    description: 'End date for filtering (ISO 8601 format)'
+    description: 'End date for filtering (ISO 8601 format)',
   })
   @ApiResponse({
     status: 200,
     description: 'Return subscription graph data',
   })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
   getSubscriptionGraphData(
     @Query('period') period?: 'daily' | 'weekly' | 'monthly' | 'yearly',
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    return this.subscriptionPlansService.getSubscriptionGraphData(period, startDate, endDate);
+    return this.subscriptionPlansService.getSubscriptionGraphData(
+      period,
+      startDate,
+      endDate,
+    );
   }
 
   @Get()
@@ -140,7 +157,10 @@ export class SubscriptionPlansController {
     type: SubscriptionPlanResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Subscription plan not found' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
   update(
     @Param('id') id: string,
     @Body() updateSubscriptionPlanDto: UpdateSubscriptionPlanDto,
@@ -158,7 +178,10 @@ export class SubscriptionPlansController {
     description: 'Subscription plan deleted successfully',
   })
   @ApiResponse({ status: 404, description: 'Subscription plan not found' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
   remove(@Param('id') id: string) {
     return this.subscriptionPlansService.remove(id);
   }
@@ -173,7 +196,10 @@ export class SubscriptionPlansController {
     type: SubscriptionResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Plan or user not found' })
-  @ApiResponse({ status: 400, description: 'User already has active subscription' })
+  @ApiResponse({
+    status: 400,
+    description: 'User already has active subscription',
+  })
   @ApiResponse({ status: 409, description: 'Transaction ID already exists' })
   subscribe(
     @GetUser('userId') userId: string,

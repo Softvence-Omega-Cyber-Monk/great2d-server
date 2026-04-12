@@ -39,11 +39,13 @@ export class PayPalController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Create a PayPal payment order',
-    description: 'Creates a new PayPal order for a subscription payment and returns the approval URL where the user should be redirected to complete the payment.'
+    description:
+      'Creates a new PayPal order for a subscription payment and returns the approval URL where the user should be redirected to complete the payment.',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'PayPal order created successfully. Redirect user to the approval URL.',
+    description:
+      'PayPal order created successfully. Redirect user to the approval URL.',
     type: PayPalOrderResponseDto,
   })
   @ApiResponse({
@@ -70,7 +72,8 @@ export class PayPalController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Capture a PayPal payment',
-    description: 'Captures (completes) a PayPal payment after the user has approved it. This should be called after the user returns from the PayPal approval page.'
+    description:
+      'Captures (completes) a PayPal payment after the user has approved it. This should be called after the user returns from the PayPal approval page.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -93,7 +96,10 @@ export class PayPalController {
     @Request() req,
     @Body() captureDto: CapturePayPalPaymentDto,
   ) {
-    return this.paypalService.capturePayment(req.user.userId, captureDto.orderId);
+    return this.paypalService.capturePayment(
+      req.user.userId,
+      captureDto.orderId,
+    );
   }
 
   @Get('payments')
@@ -101,7 +107,8 @@ export class PayPalController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Get all user payments',
-    description: 'Retrieves all PayPal payment records for the authenticated user. Results are ordered by creation date (newest first).'
+    description:
+      'Retrieves all PayPal payment records for the authenticated user. Results are ordered by creation date (newest first).',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -121,7 +128,8 @@ export class PayPalController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Get payment details',
-    description: 'Retrieves detailed information about a specific PayPal payment, including the full PayPal response and payer information.'
+    description:
+      'Retrieves detailed information about a specific PayPal payment, including the full PayPal response and payer information.',
   })
   @ApiParam({
     name: 'id',
@@ -150,7 +158,8 @@ export class PayPalController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Refund a payment',
-    description: 'Issues a full or partial refund for a completed PayPal payment. Only completed payments can be refunded. You can specify a partial refund amount or leave it empty for a full refund.'
+    description:
+      'Issues a full or partial refund for a completed PayPal payment. Only completed payments can be refunded. You can specify a partial refund amount or leave it empty for a full refund.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -159,7 +168,8 @@ export class PayPalController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Payment cannot be refunded (not completed, already refunded, or refund failed)',
+    description:
+      'Payment cannot be refunded (not completed, already refunded, or refund failed)',
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
@@ -182,7 +192,8 @@ export class PayPalController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Cancel a pending payment',
-    description: 'Cancels a pending PayPal payment that has not yet been captured. Only pending payments can be cancelled.'
+    description:
+      'Cancels a pending PayPal payment that has not yet been captured. Only pending payments can be cancelled.',
   })
   @ApiParam({
     name: 'id',
@@ -214,7 +225,8 @@ export class PayPalController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'PayPal webhook endpoint',
-    description: 'Receives webhook notifications from PayPal about payment events such as completed payments, refunds, and failures. This endpoint should be configured in your PayPal Developer Dashboard.'
+    description:
+      'Receives webhook notifications from PayPal about payment events such as completed payments, refunds, and failures. This endpoint should be configured in your PayPal Developer Dashboard.',
   })
   @ApiResponse({
     status: HttpStatus.OK,

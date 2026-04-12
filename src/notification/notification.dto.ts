@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export enum NotificationType {
   BILL_STATUS_CHANGE = 'bill_status_change',
@@ -20,14 +27,16 @@ export class CreateNotificationDto {
   @IsNotEmpty()
   title: string;
 
-  @ApiProperty({ example: 'Your bill negotiation with Comcast was successful!' })
+  @ApiProperty({
+    example: 'Your bill negotiation with Comcast was successful!',
+  })
   @IsString()
   @IsNotEmpty()
   body: string;
 
-  @ApiPropertyOptional({ 
-    example: NotificationType.BILL_STATUS_CHANGE, 
-    enum: NotificationType 
+  @ApiPropertyOptional({
+    example: NotificationType.BILL_STATUS_CHANGE,
+    enum: NotificationType,
   })
   @IsEnum(NotificationType)
   @IsOptional()
@@ -38,9 +47,9 @@ export class CreateNotificationDto {
   @IsOptional()
   billId?: string;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     example: { oldStatus: 'sent', newStatus: 'successful' },
-    description: 'Additional metadata as JSON'
+    description: 'Additional metadata as JSON',
   })
   @IsOptional()
   data?: any;

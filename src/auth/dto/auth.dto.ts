@@ -26,10 +26,10 @@ export class RegisterDto {
   @IsOptional()
   fullName?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: 'fcm_token_here',
     required: false,
-    description: 'Firebase Cloud Messaging token for push notifications'
+    description: 'Firebase Cloud Messaging token for push notifications',
   })
   @IsString()
   @IsOptional()
@@ -38,10 +38,10 @@ export class RegisterDto {
   @ApiProperty({
     example: 'role',
     required: false,
-    description: "Role"
+    description: 'Role',
   })
   @IsOptional()
-  role?: string
+  role?: string;
 }
 
 export class LoginDto {
@@ -55,10 +55,10 @@ export class LoginDto {
   @IsNotEmpty()
   password: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: 'fcm_token_here',
     required: false,
-    description: 'Firebase Cloud Messaging token for push notifications'
+    description: 'Firebase Cloud Messaging token for push notifications',
   })
   @IsString()
   @IsOptional()

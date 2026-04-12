@@ -15,7 +15,7 @@ export class CreateSubscriptionPlanDto {
   @IsNotEmpty()
   planName: string;
 
-  @ApiProperty({example: 'Aree hridoy bhai apni kemon achen? valo to?'})
+  @ApiProperty({ example: 'Aree hridoy bhai apni kemon achen? valo to?' })
   @IsString()
   @IsNotEmpty()
   description: string;
@@ -43,6 +43,12 @@ export class CreateSubscriptionPlanDto {
   @IsString()
   @IsOptional()
   appleProductId?: string;
+
+  @ApiPropertyOptional({ example: 9.99, description: 'Apple specific pricing' })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  applePricing?: number;
 }
 
 export class UpdateSubscriptionPlanDto extends PartialType(
@@ -57,7 +63,7 @@ export class SubscriptionPlanResponseDto {
   planName: string;
 
   @ApiProperty()
-  description: string
+  description: string;
 
   @ApiProperty()
   price: number;
@@ -69,7 +75,12 @@ export class SubscriptionPlanResponseDto {
   features: string[];
 
   @ApiPropertyOptional()
+  @IsString()
   appleProductId?: string;
+
+  @ApiPropertyOptional()
+  @IsNumber()
+  applePricing?: number;
 
   @ApiProperty()
   createdAt: Date;
@@ -84,15 +95,15 @@ export class SubscribeDto {
   @IsNotEmpty()
   subscriptionPlanId: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: 'TXN123456789',
-    description: 'Unique transaction ID from payment gateway'
+    description: 'Unique transaction ID from payment gateway',
   })
   @IsString()
   @IsNotEmpty()
   transactionId: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: '2025-12-17T10:00:00.000Z',
     description: 'Subscription start date in ISO 8601 format (UTC recommended)',
     required: false,

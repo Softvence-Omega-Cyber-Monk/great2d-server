@@ -104,6 +104,9 @@ export class PaymentController {
     @common.Headers('stripe-signature') signature: string,
     @common.Req() request: common.RawBodyRequest<Request>,
   ): Promise<WebhookResponseDto> {
-    return this.paymentService.handleWebhook(signature, request.rawBody || Buffer.alloc(0));
+    return this.paymentService.handleWebhook(
+      signature,
+      request.rawBody || Buffer.alloc(0),
+    );
   }
 }

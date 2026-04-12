@@ -142,8 +142,14 @@ export class UsersService {
     if (!user || user.isDeleted) {
       throw new NotFoundException('User not found');
     }
-    
-    return user;
+
+    return {
+      ...user,
+      currentSubscription: user.subscriptions[0] ? {
+        ...user.subscriptions[0],
+        isActive: user.subscriptions[0].expiresAt > new Date(),
+      } : null,
+    };
   }
 
   async updateMe(userId: string, dto: UpdateUserDto, file?: any) {
@@ -166,11 +172,14 @@ export class UsersService {
       }
 
       // Upload new image
-      profilePictureUrl = await this.cloudinaryService.uploadImage(file, 'user-profiles');
+      profilePictureUrl = await this.cloudinaryService.uploadImage(
+        file,
+        'user-profiles',
+      );
     }
 
     // Update user profile
-    return this.prisma.user.update({
+    const updatedUser = await this.prisma.user.update({
       where: { userId },
       data: {
         ...dto,
@@ -212,6 +221,14 @@ export class UsersService {
         },
       },
     });
+
+    return {
+      ...updatedUser,
+      currentSubscription: updatedUser.subscriptions[0] ? {
+        ...updatedUser.subscriptions[0],
+        isActive: updatedUser.subscriptions[0].expiresAt > new Date(),
+      } : null,
+    };
   }
 
   async removeMe(userId: string) {
@@ -238,7 +255,12 @@ export class UsersService {
     return { message: 'Your account has been deleted successfully' };
   }
 
-  async update(userId: string, requestUserId: string, dto: UpdateUserDto, file?: any) {
+  async update(
+    userId: string,
+    requestUserId: string,
+    dto: UpdateUserDto,
+    file?: any,
+  ) {
     // Check if user exists
     const user = await this.prisma.user.findUnique({
       where: { userId },
@@ -263,7 +285,10 @@ export class UsersService {
       }
 
       // Upload new image
-      profilePictureUrl = await this.cloudinaryService.uploadImage(file, 'user-profiles');
+      profilePictureUrl = await this.cloudinaryService.uploadImage(
+        file,
+        'user-profiles',
+      );
     }
 
     return this.prisma.user.update({
