@@ -18,11 +18,12 @@ export default registerAs('paypal', () => ({
   mode: process.env.PAYPAL_MODE || 'sandbox', // 'sandbox' or 'live'
   clientId: process.env.PAYPAL_CLIENT_ID,
   clientSecret: process.env.PAYPAL_CLIENT_SECRET,
-  returnUrl: process.env.PAYPAL_RETURN_URL || 'http://localhost:3000/payment/success',
-  cancelUrl: process.env.PAYPAL_CANCEL_URL || 'http://localhost:3000/payment/cancel',
+  returnUrl:
+    process.env.PAYPAL_RETURN_URL || 'http://localhost:3000/payment/success',
+  cancelUrl:
+    process.env.PAYPAL_CANCEL_URL || 'http://localhost:3000/payment/cancel',
   webhookId: process.env.PAYPAL_WEBHOOK_ID,
 }));
-
 
 // Add to your .env file:
 // PAYPAL_MODE=sandbox

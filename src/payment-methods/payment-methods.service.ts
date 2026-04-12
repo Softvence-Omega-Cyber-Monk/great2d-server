@@ -92,11 +92,7 @@ export class PaymentMethodsService {
     return payment;
   }
 
-  async update(
-    paymentId: string,
-    userId: string,
-    dto: UpdatePaymentMethodDto,
-  ) {
+  async update(paymentId: string, userId: string, dto: UpdatePaymentMethodDto) {
     // Check if payment method exists and belongs to user
     await this.findOne(paymentId, userId);
 

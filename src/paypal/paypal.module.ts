@@ -8,10 +8,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import paypalConfig from '../config/paypal.config';
 
 @Module({
-  imports: [
-    PrismaModule,
-    ConfigModule.forFeature(paypalConfig),
-  ],
+  imports: [PrismaModule, ConfigModule.forFeature(paypalConfig)],
   controllers: [PayPalController],
   providers: [PayPalService],
   exports: [PayPalService],

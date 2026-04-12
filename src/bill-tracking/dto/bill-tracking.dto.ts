@@ -1,13 +1,21 @@
 // bill-tracking.dto.ts
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsString, IsNumber, IsDateString, IsOptional, IsUUID } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsString,
+  IsNumber,
+  IsDateString,
+  IsOptional,
+  IsUUID,
+} from 'class-validator';
 import { BillPaymentStatus } from 'generated/prisma';
 
 export class CreateBillTrackingDto {
   @ApiProperty({
     description: 'ID of the bill to track',
-    example: '123e4567-e89b-12d3-a456-426614174000'
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @IsNotEmpty()
   @IsUUID()
@@ -15,7 +23,7 @@ export class CreateBillTrackingDto {
 
   @ApiProperty({
     description: 'Month for tracking (YYYY-MM format)',
-    example: '2024-01'
+    example: '2024-01',
   })
   @IsNotEmpty()
   @IsString()
@@ -23,7 +31,7 @@ export class CreateBillTrackingDto {
 
   @ApiProperty({
     description: 'Due date for the bill payment',
-    example: '2024-01-15T00:00:00.000Z'
+    example: '2024-01-15T00:00:00.000Z',
   })
   @IsNotEmpty()
   @IsDateString()
@@ -31,7 +39,7 @@ export class CreateBillTrackingDto {
 
   @ApiProperty({
     description: 'Bill amount',
-    example: 150.50
+    example: 150.5,
   })
   @IsNotEmpty()
   @IsNumber()
@@ -41,7 +49,7 @@ export class CreateBillTrackingDto {
 export class CreateBillTrackingPublicDto extends CreateBillTrackingDto {
   @ApiProperty({
     description: 'ID of the user',
-    example: '123e4567-e89b-12d3-a456-426614174000'
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @IsNotEmpty()
   @IsUUID()
@@ -52,7 +60,7 @@ export class UpdateBillTrackingDto {
   @ApiPropertyOptional({
     description: 'Payment status of the bill',
     enum: BillPaymentStatus,
-    example: BillPaymentStatus.paid
+    example: BillPaymentStatus.paid,
   })
   @IsOptional()
   @IsEnum(BillPaymentStatus)
@@ -60,7 +68,7 @@ export class UpdateBillTrackingDto {
 
   @ApiPropertyOptional({
     description: 'Date when the bill was paid',
-    example: '2024-01-10T00:00:00.000Z'
+    example: '2024-01-10T00:00:00.000Z',
   })
   @IsOptional()
   @IsDateString()
@@ -68,7 +76,7 @@ export class UpdateBillTrackingDto {
 
   @ApiPropertyOptional({
     description: 'Updated bill amount',
-    example: 175.00
+    example: 175.0,
   })
   @IsOptional()
   @IsNumber()
@@ -76,7 +84,7 @@ export class UpdateBillTrackingDto {
 
   @ApiPropertyOptional({
     description: 'Updated due date',
-    example: '2024-01-20T00:00:00.000Z'
+    example: '2024-01-20T00:00:00.000Z',
   })
   @IsOptional()
   @IsDateString()
@@ -86,80 +94,80 @@ export class UpdateBillTrackingDto {
 export class BillTrackingResponseDto {
   @ApiProperty({
     description: 'Unique identifier for the bill tracking record',
-    example: '123e4567-e89b-12d3-a456-426614174000'
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   id: string;
 
   @ApiProperty({
     description: 'ID of the associated bill',
-    example: '123e4567-e89b-12d3-a456-426614174000'
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   billId: string;
 
   @ApiProperty({
     description: 'Month of tracking',
-    example: '2024-01-01T00:00:00.000Z'
+    example: '2024-01-01T00:00:00.000Z',
   })
   month: Date;
 
   @ApiProperty({
     description: 'Name of the bill',
-    example: 'Internet Bill'
+    example: 'Internet Bill',
   })
   billName: string;
 
   @ApiProperty({
     description: 'Category of the bill',
-    example: 'internet'
+    example: 'internet',
   })
   category: string;
 
   @ApiProperty({
     description: 'Service provider name',
-    example: 'Comcast'
+    example: 'Comcast',
   })
   provider: string;
 
   @ApiProperty({
     description: 'Bill amount',
-    example: 150.50
+    example: 150.5,
   })
   amount: number;
 
   @ApiProperty({
     description: 'Due date for payment',
-    example: '2024-01-15T00:00:00.000Z'
+    example: '2024-01-15T00:00:00.000Z',
   })
   dueDate: Date;
 
   @ApiProperty({
     description: 'Payment status',
     enum: BillPaymentStatus,
-    example: BillPaymentStatus.due
+    example: BillPaymentStatus.due,
   })
   paymentStatus: BillPaymentStatus;
 
   @ApiPropertyOptional({
     description: 'Date when the bill was paid',
-    example: '2024-01-10T00:00:00.000Z'
+    example: '2024-01-10T00:00:00.000Z',
   })
   paidAt?: Date;
 
   @ApiProperty({
     description: 'ID of the user',
-    example: '123e4567-e89b-12d3-a456-426614174000'
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   userId: string;
 
   @ApiProperty({
     description: 'Creation timestamp',
-    example: '2024-01-01T00:00:00.000Z'
+    example: '2024-01-01T00:00:00.000Z',
   })
   createdAt: Date;
 
   @ApiProperty({
     description: 'Last update timestamp',
-    example: '2024-01-10T00:00:00.000Z'
+    example: '2024-01-10T00:00:00.000Z',
   })
   updatedAt: Date;
 }
@@ -167,49 +175,49 @@ export class BillTrackingResponseDto {
 export class MonthlyBillSummaryDto {
   @ApiProperty({
     description: 'Month of the summary',
-    example: '2024-01'
+    example: '2024-01',
   })
   month: string;
 
   @ApiProperty({
     description: 'Total number of bills',
-    example: 5
+    example: 5,
   })
   totalBills: number;
 
   @ApiProperty({
     description: 'Number of paid bills',
-    example: 3
+    example: 3,
   })
   paidBills: number;
 
   @ApiProperty({
     description: 'Number of due bills',
-    example: 1
+    example: 1,
   })
   dueBills: number;
 
   @ApiProperty({
     description: 'Number of overdue bills',
-    example: 1
+    example: 1,
   })
   overdueBills: number;
 
   @ApiProperty({
     description: 'Total amount of all bills',
-    example: 750.00
+    example: 750.0,
   })
   totalAmount: number;
 
   @ApiProperty({
     description: 'Total amount paid',
-    example: 450.00
+    example: 450.0,
   })
   paidAmount: number;
 
   @ApiProperty({
     description: 'Total amount still due',
-    example: 300.00
+    example: 300.0,
   })
   dueAmount: number;
 }

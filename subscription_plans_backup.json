@@ -1,0 +1,41 @@
+[
+  {
+    "subscriptionPlanId": "ff3c7d9c-9b96-4ac7-8746-90dcf5784535",
+    "planName": "Basic Monthly",
+    "price": 9.99,
+    "duration": 1,
+    "features": [
+      "Basic Access"
+    ],
+    "createdAt": "2026-04-08T10:33:45.279Z",
+    "updatedAt": "2026-04-08T10:33:45.279Z",
+    "description": "Standard features",
+    "appleProductId": "com.billedsmart.basic.monthly"
+  },
+  {
+    "subscriptionPlanId": "d230ad76-aef0-48d4-96be-4a97524d607f",
+    "planName": "Elite Monthly",
+    "price": 19.99,
+    "duration": 1,
+    "features": [
+      "All Elite Features"
+    ],
+    "createdAt": "2026-04-08T10:33:45.842Z",
+    "updatedAt": "2026-04-08T10:33:45.842Z",
+    "description": "Advanced features",
+    "appleProductId": "com.billedsmart.elite.monthly"
+  },
+  {
+    "subscriptionPlanId": "7c16dab8-f7ae-49d2-9d83-35ad1431ff2f",
+    "planName": "Premium Yearly",
+    "price": 99.99,
+    "duration": 12,
+    "features": [
+      "Full Year Premium"
+    ],
+    "createdAt": "2026-04-08T10:33:46.137Z",
+    "updatedAt": "2026-04-08T10:33:46.137Z",
+    "description": "Complete access",
+    "appleProductId": "com.billedsmart.premium.yearly"
+  }
+]

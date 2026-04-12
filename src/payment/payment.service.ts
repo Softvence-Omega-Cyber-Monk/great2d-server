@@ -4,89 +4,90 @@ import Stripe from 'stripe';
 
 @Injectable()
 export class PaymentService {
-    private stripe: Stripe;
+  private stripe: Stripe;
 
-    constructor(private configService: ConfigService) {
-        this.stripe = new Stripe(
-            this.configService.get<any>('STRIPE_SECRET_KEY'),
-            { apiVersion: '2025-12-15.clover' }
-        );
+  constructor(private configService: ConfigService) {
+    this.stripe = new Stripe(this.configService.get<any>('STRIPE_SECRET_KEY'), {
+      apiVersion: '2025-12-15.clover',
+    });
+  }
+
+  async createPaymentIntent(amount: number, currency: string = 'usd') {
+    try {
+      const paymentIntent = await this.stripe.paymentIntents.create({
+        amount: Math.round(amount * 100),
+        currency,
+        payment_method_types: ['card'],
+      });
+
+      if (!paymentIntent.client_secret) {
+        throw new Error('Payment intent created but client secret is missing');
+      }
+
+      return {
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+      };
+    } catch (error: any) {
+      throw new Error(`Failed to create payment intent: ${error.message}`);
     }
+  }
 
-    async createPaymentIntent(amount: number, currency: string = 'usd') {
-        try {
-            const paymentIntent = await this.stripe.paymentIntents.create({
-                amount: Math.round(amount * 100),
-                currency,
-                payment_method_types: ['card'],
-            });
+  async createCustomer(email: string, name?: string) {
+    try {
+      const customer = await this.stripe.customers.create({
+        email,
+        name,
+      });
 
-            if (!paymentIntent.client_secret) {
-                throw new Error('Payment intent created but client secret is missing');
-            }
-
-            return {
-                clientSecret: paymentIntent.client_secret,
-                paymentIntentId: paymentIntent.id,
-            };
-        } catch (error: any) {
-            throw new Error(`Failed to create payment intent: ${error.message}`);
-        }
+      return {
+        customerId: customer.id,
+      };
+    } catch (error) {
+      throw new Error(`Failed to create customer: ${error.message}`);
     }
+  }
 
-    async createCustomer(email: string, name?: string) {
-        try {
-            const customer = await this.stripe.customers.create({
-                email,
-                name,
-            });
-
-            return {
-                customerId: customer.id,
-            };
-        } catch (error) {
-            throw new Error(`Failed to create customer: ${error.message}`);
-        }
+  async getPaymentIntent(paymentIntentId: string) {
+    try {
+      return await this.stripe.paymentIntents.retrieve(paymentIntentId);
+    } catch (error) {
+      throw new Error(`Failed to retrieve payment intent: ${error.message}`);
     }
+  }
 
-    async getPaymentIntent(paymentIntentId: string) {
-        try {
-            return await this.stripe.paymentIntents.retrieve(paymentIntentId);
-        } catch (error) {
-            throw new Error(`Failed to retrieve payment intent: ${error.message}`);
-        }
+  async handleWebhook(signature: string, payload: Buffer) {
+    const webhookSecret = this.configService.get<string>(
+      'STRIPE_WEBHOOK_SECRET',
+    );
+
+    try {
+      const event = this.stripe.webhooks.constructEvent(
+        payload,
+        signature,
+        webhookSecret!,
+      );
+
+      switch (event.type) {
+        case 'payment_intent.succeeded':
+          const paymentIntent = event.data.object;
+          console.log('Payment succeeded:', paymentIntent.id);
+          // Handle successful payment
+          break;
+
+        case 'payment_intent.payment_failed':
+          const failedPayment = event.data.object;
+          console.log('Payment failed:', failedPayment.id);
+          // Handle failed payment
+          break;
+
+        default:
+          console.log(`Unhandled event type: ${event.type}`);
+      }
+
+      return { received: true };
+    } catch (error) {
+      throw new Error(`Webhook error: ${error.message}`);
     }
-
-    async handleWebhook(signature: string, payload: Buffer) {
-        const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
-
-        try {
-            const event = this.stripe.webhooks.constructEvent(
-                payload,
-                signature,
-                webhookSecret!
-            );
-
-            switch (event.type) {
-                case 'payment_intent.succeeded':
-                    const paymentIntent = event.data.object;
-                    console.log('Payment succeeded:', paymentIntent.id);
-                    // Handle successful payment
-                    break;
-
-                case 'payment_intent.payment_failed':
-                    const failedPayment = event.data.object;
-                    console.log('Payment failed:', failedPayment.id);
-                    // Handle failed payment
-                    break;
-
-                default:
-                    console.log(`Unhandled event type: ${event.type}`);
-            }
-
-            return { received: true };
-        } catch (error) {
-            throw new Error(`Webhook error: ${error.message}`);
-        }
-    }
+  }
 }

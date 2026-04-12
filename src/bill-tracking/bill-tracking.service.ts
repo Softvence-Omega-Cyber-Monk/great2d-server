@@ -1,8 +1,16 @@
 // bill-tracking.service.ts
 
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateBillTrackingDto, UpdateBillTrackingDto, MonthlyBillSummaryDto } from './dto/bill-tracking.dto';
+import {
+  CreateBillTrackingDto,
+  UpdateBillTrackingDto,
+  MonthlyBillSummaryDto,
+} from './dto/bill-tracking.dto';
 import { BillPaymentStatus } from 'generated/prisma';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
@@ -16,7 +24,7 @@ export class BillTrackingService {
   async create(userId: string, createDto: CreateBillTrackingDto) {
     // Verify bill exists and belongs to user
     const bill = await this.prisma.bill.findFirst({
-      where: { id: createDto.billId, userId }
+      where: { id: createDto.billId, userId },
     });
 
     if (!bill) {
@@ -31,18 +39,21 @@ export class BillTrackingService {
       where: {
         billId_month: {
           billId: createDto.billId,
-          month: monthDate
-        }
-      }
+          month: monthDate,
+        },
+      },
     });
 
     if (existing) {
-      throw new BadRequestException('Bill tracking already exists for this month');
+      throw new BadRequestException(
+        'Bill tracking already exists for this month',
+      );
     }
 
     // Get bill name from bill details or use provider name as fallback
     const billName = bill.accountDetails || bill.providerName || 'Unnamed Bill';
-    const provider = bill.providerName || bill.providerEmail || 'Unknown Provider';
+    const provider =
+      bill.providerName || bill.providerEmail || 'Unknown Provider';
 
     return this.prisma.billTracking.create({
       data: {
@@ -54,15 +65,20 @@ export class BillTrackingService {
         amount: createDto.amount,
         dueDate: new Date(createDto.dueDate),
         paymentStatus: BillPaymentStatus.due,
-        userId
-      }
+        userId,
+      },
     });
   }
 
   /**
    * Get all bill tracking records for a user (Public - with optional billId filter)
    */
-  async findAllPublic(userId: string, month?: string, status?: BillPaymentStatus, billId?: string) {
+  async findAllPublic(
+    userId: string,
+    month?: string,
+    status?: BillPaymentStatus,
+    billId?: string,
+  ) {
     const where: any = { userId };
 
     if (month) {
@@ -80,13 +96,10 @@ export class BillTrackingService {
 
     return this.prisma.billTracking.findMany({
       where,
-      orderBy: [
-        { month: 'desc' },
-        { dueDate: 'asc' }
-      ],
+      orderBy: [{ month: 'desc' }, { dueDate: 'asc' }],
       include: {
-        bill: true
-      }
+        bill: true,
+      },
     });
   }
 
@@ -107,13 +120,10 @@ export class BillTrackingService {
 
     return this.prisma.billTracking.findMany({
       where,
-      orderBy: [
-        { month: 'desc' },
-        { dueDate: 'asc' }
-      ],
+      orderBy: [{ month: 'desc' }, { dueDate: 'asc' }],
       include: {
-        bill: true
-      }
+        bill: true,
+      },
     });
   }
 
@@ -124,8 +134,8 @@ export class BillTrackingService {
     const tracking = await this.prisma.billTracking.findFirst({
       where: { id, userId },
       include: {
-        bill: true
-      }
+        bill: true,
+      },
     });
 
     if (!tracking) {
@@ -145,9 +155,12 @@ export class BillTrackingService {
 
     if (updateDto.paymentStatus !== undefined) {
       data.paymentStatus = updateDto.paymentStatus;
-      
+
       // If marking as paid, set paidAt to now if not provided
-      if (updateDto.paymentStatus === BillPaymentStatus.paid && !updateDto.paidAt) {
+      if (
+        updateDto.paymentStatus === BillPaymentStatus.paid &&
+        !updateDto.paidAt
+      ) {
         data.paidAt = new Date();
       }
     }
@@ -166,7 +179,7 @@ export class BillTrackingService {
 
     return this.prisma.billTracking.update({
       where: { id },
-      data
+      data,
     });
   }
 
@@ -176,7 +189,7 @@ export class BillTrackingService {
   async markAsPaid(userId: string, id: string) {
     return this.update(userId, id, {
       paymentStatus: BillPaymentStatus.paid,
-      paidAt: new Date().toISOString()
+      paidAt: new Date().toISOString(),
     });
   }
 
@@ -185,35 +198,44 @@ export class BillTrackingService {
    */
   async remove(userId: string, id: string) {
     await this.findOne(userId, id);
-    
+
     return this.prisma.billTracking.delete({
-      where: { id }
+      where: { id },
     });
   }
 
   /**
    * Get monthly summary for a user
    */
-  async getMonthlySummary(userId: string, month: string): Promise<MonthlyBillSummaryDto> {
+  async getMonthlySummary(
+    userId: string,
+    month: string,
+  ): Promise<MonthlyBillSummaryDto> {
     const monthDate = this.parseMonthToDate(month);
 
     const trackings = await this.prisma.billTracking.findMany({
-      where: { userId, month: monthDate }
+      where: { userId, month: monthDate },
     });
 
     const summary: MonthlyBillSummaryDto = {
       month,
       totalBills: trackings.length,
-      paidBills: trackings.filter(t => t.paymentStatus === BillPaymentStatus.paid).length,
-      dueBills: trackings.filter(t => t.paymentStatus === BillPaymentStatus.due).length,
-      overdueBills: trackings.filter(t => t.paymentStatus === BillPaymentStatus.overdue).length,
+      paidBills: trackings.filter(
+        (t) => t.paymentStatus === BillPaymentStatus.paid,
+      ).length,
+      dueBills: trackings.filter(
+        (t) => t.paymentStatus === BillPaymentStatus.due,
+      ).length,
+      overdueBills: trackings.filter(
+        (t) => t.paymentStatus === BillPaymentStatus.overdue,
+      ).length,
       totalAmount: trackings.reduce((sum, t) => sum + t.amount, 0),
       paidAmount: trackings
-        .filter(t => t.paymentStatus === BillPaymentStatus.paid)
+        .filter((t) => t.paymentStatus === BillPaymentStatus.paid)
         .reduce((sum, t) => sum + t.amount, 0),
       dueAmount: trackings
-        .filter(t => t.paymentStatus !== BillPaymentStatus.paid)
-        .reduce((sum, t) => sum + t.amount, 0)
+        .filter((t) => t.paymentStatus !== BillPaymentStatus.paid)
+        .reduce((sum, t) => sum + t.amount, 0),
     };
 
     return summary;
@@ -233,8 +255,8 @@ export class BillTrackingService {
     // Get all active bills
     const bills = await this.prisma.bill.findMany({
       include: {
-        user: true
-      }
+        user: true,
+      },
     });
 
     for (const bill of bills) {
@@ -243,9 +265,9 @@ export class BillTrackingService {
         where: {
           billId_month: {
             billId: bill.id,
-            month: currentMonth
-          }
-        }
+            month: currentMonth,
+          },
+        },
       });
 
       if (!existing) {
@@ -253,8 +275,10 @@ export class BillTrackingService {
         const dueDate = new Date(currentMonth);
         dueDate.setDate(15);
 
-        const billName = bill.accountDetails || bill.providerName || 'Unnamed Bill';
-        const providerName = bill.providerName || bill.providerEmail || 'Unknown Provider';
+        const billName =
+          bill.accountDetails || bill.providerName || 'Unnamed Bill';
+        const providerName =
+          bill.providerName || bill.providerEmail || 'Unknown Provider';
         const amount = 0; // Default amount, should be updated by user
 
         await this.prisma.billTracking.create({
@@ -267,8 +291,8 @@ export class BillTrackingService {
             amount: amount,
             dueDate: dueDate,
             paymentStatus: BillPaymentStatus.due,
-            userId: bill.userId
-          }
+            userId: bill.userId,
+          },
         });
 
         console.log(`Created tracking for bill: ${billName} (${bill.userId})`);
@@ -293,16 +317,16 @@ export class BillTrackingService {
       where: {
         paymentStatus: BillPaymentStatus.due,
         dueDate: {
-          lt: now
-        }
-      }
+          lt: now,
+        },
+      },
     });
 
     // Update them to overdue
     for (const bill of overdueBills) {
       await this.prisma.billTracking.update({
         where: { id: bill.id },
-        data: { paymentStatus: BillPaymentStatus.overdue }
+        data: { paymentStatus: BillPaymentStatus.overdue },
       });
     }
 

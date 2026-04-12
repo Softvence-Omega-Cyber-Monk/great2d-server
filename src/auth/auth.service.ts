@@ -9,14 +9,17 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private mailService: MailService,
-  ) { }
+  ) {}
 
   // Helper method to generate tokens
   private generateTokens(userId: string, email: string, role: string) {
@@ -54,14 +57,7 @@ export class AuthService {
             },
           },
           include: {
-            subscriptionPlan: {
-              select: {
-                subscriptionPlanId: true,
-                planName: true,
-                price: true,
-                duration: true,
-              },
-            },
+            subscriptionPlan: true,
           },
           orderBy: {
             createdAt: 'desc',
@@ -99,14 +95,7 @@ export class AuthService {
               },
             },
             include: {
-              subscriptionPlan: {
-                select: {
-                  subscriptionPlanId: true,
-                  planName: true,
-                  price: true,
-                  duration: true,
-                },
-              },
+              subscriptionPlan: true,
             },
             orderBy: {
               createdAt: 'desc',
@@ -149,14 +138,7 @@ export class AuthService {
                 },
               },
               include: {
-                subscriptionPlan: {
-                  select: {
-                    subscriptionPlanId: true,
-                    planName: true,
-                    price: true,
-                    duration: true,
-                  },
-                },
+                subscriptionPlan: true,
               },
               orderBy: {
                 createdAt: 'desc',
@@ -168,8 +150,16 @@ export class AuthService {
       }
     }
 
+    if (!user) {
+      throw new UnauthorizedException('Authentication failed');
+    }
+
     // Generate tokens
     const tokens = this.generateTokens(user.userId, user.email, user.role);
+
+    this.logger.log(
+      `Social Login successful for user: ${user.userId}. Active sub: ${user.subscriptions[0]?.subscriptionId || 'None'}`,
+    );
 
     return {
       ...tokens,
@@ -179,13 +169,23 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
         profilePictureUrl: user.profilePictureUrl,
-        currentSubscription: user.subscriptions[0] || null,
+        subscriptions: user.subscriptions,
+        currentSubscription: user.subscriptions[0] ? {
+          ...user.subscriptions[0],
+          isActive: user.subscriptions[0].expiresAt > new Date(),
+        } : null,
       },
       isNewUser,
     };
   }
 
-  async register(email: string, password: string, fullName?: string, fcmToken?: string, role?: string) {
+  async register(
+    email: string,
+    password: string,
+    fullName?: string,
+    fcmToken?: string,
+    role?: string,
+  ) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
@@ -194,7 +194,7 @@ export class AuthService {
       throw new ConflictException('User with this email already exists');
     }
 
-    const userRole = (role ?? "user") as any;
+    const userRole = (role ?? 'user') as any;
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -246,14 +246,7 @@ export class AuthService {
             },
           },
           include: {
-            subscriptionPlan: {
-              select: {
-                subscriptionPlanId: true,
-                planName: true,
-                price: true,
-                duration: true,
-              },
-            },
+            subscriptionPlan: true,
           },
           orderBy: {
             createdAt: 'desc',
@@ -283,6 +276,10 @@ export class AuthService {
 
     const tokens = this.generateTokens(user.userId, user.email, user.role);
 
+    this.logger.log(
+      `Login successful for user: ${user.userId}. Active sub: ${user.subscriptions[0]?.subscriptionId || 'None'}`,
+    );
+
     return {
       ...tokens,
       user: {
@@ -290,7 +287,11 @@ export class AuthService {
         email: user.email,
         fullName: user.fullName,
         role: user.role,
-        currentSubscription: user.subscriptions[0] || null,
+        subscriptions: user.subscriptions,
+        currentSubscription: user.subscriptions[0] ? {
+          ...user.subscriptions[0],
+          isActive: user.subscriptions[0].expiresAt > new Date(),
+        } : null,
       },
     };
   }
@@ -508,11 +509,15 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    const { isDeleted, subscriptions, ...userProfile } = user;
+    this.logger.log(
+      `Fetching profile for user: ${userId}. Active sub found: ${user.subscriptions[0]?.subscriptionId || 'None'}`,
+    );
+
+    const { isDeleted, ...userProfile } = user;
 
     return {
       ...userProfile,
-      currentSubscription: subscriptions[0] || null,
+      currentSubscription: user.subscriptions[0] || null,
     };
   }
   // Add these methods to your existing AuthService class

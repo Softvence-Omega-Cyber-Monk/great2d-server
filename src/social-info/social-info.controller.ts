@@ -11,13 +11,13 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { SocialInfoService } from './social-info.service';
-import { 
+import {
   CreateEmailDto,
   CreatePhoneDto,
   CreateWhatsAppDto,
-  UpdateEmailDto, 
-  UpdatePhoneDto, 
-  UpdateWhatsAppDto 
+  UpdateEmailDto,
+  UpdatePhoneDto,
+  UpdateWhatsAppDto,
 } from './dto/social-info.dto';
 
 @ApiTags('Email')
@@ -27,9 +27,9 @@ export class EmailController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Create email',
-    description: 'Add a new email address to the database'
+    description: 'Add a new email address to the database',
   })
   @ApiResponse({ status: 201, description: 'Email successfully created' })
   create(@Body() createEmailDto: CreateEmailDto) {
@@ -70,9 +70,9 @@ export class PhoneController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Create phone',
-    description: 'Add a new phone number to the database'
+    description: 'Add a new phone number to the database',
   })
   @ApiResponse({ status: 201, description: 'Phone successfully created' })
   create(@Body() createPhoneDto: CreatePhoneDto) {
@@ -122,9 +122,9 @@ export class WhatsAppController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Create WhatsApp',
-    description: 'Add a new WhatsApp number to the database'
+    description: 'Add a new WhatsApp number to the database',
   })
   @ApiResponse({ status: 201, description: 'WhatsApp successfully created' })
   create(@Body() createWhatsAppDto: CreateWhatsAppDto) {
@@ -152,7 +152,10 @@ export class WhatsAppController {
   @ApiParam({ name: 'id', description: 'WhatsApp ID (UUID)' })
   @ApiResponse({ status: 200, description: 'WhatsApp updated' })
   @ApiResponse({ status: 404, description: 'WhatsApp not found' })
-  update(@Param('id') id: string, @Body() updateWhatsAppDto: UpdateWhatsAppDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateWhatsAppDto: UpdateWhatsAppDto,
+  ) {
     return this.socialInfoService.updateWhatsApp(id, updateWhatsAppDto);
   }
 

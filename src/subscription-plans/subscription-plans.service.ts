@@ -16,9 +16,18 @@ import {
 export class SubscriptionPlansService {
   private readonly logger = new Logger(SubscriptionPlansService.name);
 
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateSubscriptionPlanDto) {
+    if (
+      (dto.appleProductId && !dto.applePricing) ||
+      (!dto.appleProductId && dto.applePricing)
+    ) {
+      throw new BadRequestException(
+        'appleProductId and applePricing must be provided together or both omitted.',
+      );
+    }
+
     return this.prisma.subscriptionPlan.create({
       data: dto,
     });
@@ -53,7 +62,24 @@ export class SubscriptionPlansService {
   }
 
   async update(subscriptionPlanId: string, dto: UpdateSubscriptionPlanDto) {
-    await this.findOne(subscriptionPlanId);
+    const existing = await this.findOne(subscriptionPlanId);
+
+    // Combine existing data with updates to validate final state
+    const finalProductId =
+      dto.appleProductId !== undefined
+        ? dto.appleProductId
+        : existing.appleProductId;
+    const finalPricing =
+      dto.applePricing !== undefined ? dto.applePricing : existing.applePricing;
+
+    if (
+      (finalProductId && !finalPricing) ||
+      (!finalProductId && finalPricing)
+    ) {
+      throw new BadRequestException(
+        'appleProductId and applePricing must be provided together or both omitted.',
+      );
+    }
 
     return this.prisma.subscriptionPlan.update({
       where: { subscriptionPlanId },
@@ -143,18 +169,23 @@ export class SubscriptionPlansService {
     });
 
     // Calculate status for each subscription
-    const enrichedSubscriptions = subscriptions.map(sub => ({
+    const enrichedSubscriptions = subscriptions.map((sub) => ({
       ...sub,
       status: sub.isActive && sub.expiresAt >= now ? 'active' : 'expired',
-      daysRemaining: sub.expiresAt >= now
-        ? Math.ceil((sub.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        : 0,
+      daysRemaining:
+        sub.expiresAt >= now
+          ? Math.ceil(
+              (sub.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+            )
+          : 0,
     }));
 
     return {
       total: enrichedSubscriptions.length,
-      activeCount: enrichedSubscriptions.filter(s => s.status === 'active').length,
-      expiredCount: enrichedSubscriptions.filter(s => s.status === 'expired').length,
+      activeCount: enrichedSubscriptions.filter((s) => s.status === 'active')
+        .length,
+      expiredCount: enrichedSubscriptions.filter((s) => s.status === 'expired')
+        .length,
       subscriptions: enrichedSubscriptions,
     };
   }
@@ -191,18 +222,23 @@ export class SubscriptionPlansService {
     });
 
     // Enrich with status and days remaining
-    const enrichedSubscriptions = subscriptions.map(sub => ({
+    const enrichedSubscriptions = subscriptions.map((sub) => ({
       ...sub,
       status: sub.isActive && sub.expiresAt >= now ? 'active' : 'expired',
-      daysRemaining: sub.expiresAt >= now
-        ? Math.ceil((sub.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        : 0,
+      daysRemaining:
+        sub.expiresAt >= now
+          ? Math.ceil(
+              (sub.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+            )
+          : 0,
     }));
 
     return {
       total: enrichedSubscriptions.length,
-      activeCount: enrichedSubscriptions.filter(s => s.status === 'active').length,
-      expiredCount: enrichedSubscriptions.filter(s => s.status === 'expired').length,
+      activeCount: enrichedSubscriptions.filter((s) => s.status === 'active')
+        .length,
+      expiredCount: enrichedSubscriptions.filter((s) => s.status === 'expired')
+        .length,
       subscriptions: enrichedSubscriptions,
     };
   }
@@ -213,17 +249,19 @@ export class SubscriptionPlansService {
     endDate?: string,
   ) {
     const now = new Date();
-    
+
     // Default date range: last 12 months
     const defaultStartDate = new Date(now);
     defaultStartDate.setMonth(defaultStartDate.getMonth() - 12);
-    
+
     const start = startDate ? new Date(startDate) : defaultStartDate;
     const end = endDate ? new Date(endDate) : now;
 
     // Validate dates
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      throw new BadRequestException('Invalid date format. Use ISO 8601 format (e.g., 2024-01-01)');
+      throw new BadRequestException(
+        'Invalid date format. Use ISO 8601 format (e.g., 2024-01-01)',
+      );
     }
 
     if (start > end) {
@@ -253,12 +291,20 @@ export class SubscriptionPlansService {
     });
 
     // Group data by period
-    const groupedData = this.groupSubscriptionsByPeriod(subscriptions, period, start, end);
-    
+    const groupedData = this.groupSubscriptionsByPeriod(
+      subscriptions,
+      period,
+      start,
+      end,
+    );
+
     // Calculate statistics
-    const totalRevenue = subscriptions.reduce((sum, sub) => sum + sub.subscriptionPlan.price, 0);
-    const activeSubscriptions = subscriptions.filter(sub => 
-      sub.isActive && sub.expiresAt >= now
+    const totalRevenue = subscriptions.reduce(
+      (sum, sub) => sum + sub.subscriptionPlan.price,
+      0,
+    );
+    const activeSubscriptions = subscriptions.filter(
+      (sub) => sub.isActive && sub.expiresAt >= now,
     ).length;
 
     // Group by plan
@@ -275,7 +321,8 @@ export class SubscriptionPlansService {
         activeSubscriptions,
         expiredSubscriptions: subscriptions.length - activeSubscriptions,
         totalRevenue,
-        averageRevenue: subscriptions.length > 0 ? totalRevenue / subscriptions.length : 0,
+        averageRevenue:
+          subscriptions.length > 0 ? totalRevenue / subscriptions.length : 0,
       },
       timeSeriesData: groupedData,
       byPlan,
@@ -307,7 +354,7 @@ export class SubscriptionPlansService {
     const now = new Date();
 
     // Populate with actual data
-    subscriptions.forEach(sub => {
+    subscriptions.forEach((sub) => {
       const key = this.getDateKey(new Date(sub.createdAt), period);
       if (dataMap.has(key)) {
         const data = dataMap.get(key);
@@ -327,7 +374,7 @@ export class SubscriptionPlansService {
   private groupByPlan(subscriptions: any[]) {
     const planMap = new Map<string, any>();
 
-    subscriptions.forEach(sub => {
+    subscriptions.forEach((sub) => {
       const planId = sub.subscriptionPlan.subscriptionPlanId;
       if (!planMap.has(planId)) {
         planMap.set(planId, {
@@ -349,7 +396,10 @@ export class SubscriptionPlansService {
     return Array.from(planMap.values()).sort((a, b) => b.revenue - a.revenue);
   }
 
-  private getDateKey(date: Date, period: 'daily' | 'weekly' | 'monthly' | 'yearly'): string {
+  private getDateKey(
+    date: Date,
+    period: 'daily' | 'weekly' | 'monthly' | 'yearly',
+  ): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -370,14 +420,19 @@ export class SubscriptionPlansService {
   }
 
   private getWeekNumber(date: Date): number {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const d = new Date(
+      Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+    );
     const dayNum = d.getUTCDay() || 7;
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   }
 
-  private incrementDate(date: Date, period: 'daily' | 'weekly' | 'monthly' | 'yearly'): void {
+  private incrementDate(
+    date: Date,
+    period: 'daily' | 'weekly' | 'monthly' | 'yearly',
+  ): void {
     switch (period) {
       case 'daily':
         date.setDate(date.getDate() + 1);
@@ -399,7 +454,9 @@ export class SubscriptionPlansService {
 
     // Check if plan exists
     const plan = await this.findOne(dto.subscriptionPlanId);
-    this.logger.log(`Plan found: ${plan.planName}, Duration: ${plan.duration} months`);
+    this.logger.log(
+      `Plan found: ${plan.planName}, Duration: ${plan.duration} months`,
+    );
 
     // Check if user exists
     const user = await this.prisma.user.findUnique({
@@ -464,7 +521,7 @@ export class SubscriptionPlansService {
 
     if (startDate < thirtyDaysAgo) {
       throw new BadRequestException(
-        'Start date cannot be more than 30 days in the past. Please use current date or omit createdAt field.'
+        'Start date cannot be more than 30 days in the past. Please use current date or omit createdAt field.',
       );
     }
 
@@ -475,7 +532,7 @@ export class SubscriptionPlansService {
     // Verify the subscription won't be expired immediately
     if (expiresAt <= now) {
       throw new BadRequestException(
-        `Subscription would expire immediately. Start date: ${startDate.toISOString()}, Expiry would be: ${expiresAt.toISOString()}`
+        `Subscription would expire immediately. Start date: ${startDate.toISOString()}, Expiry would be: ${expiresAt.toISOString()}`,
       );
     }
 
@@ -509,7 +566,9 @@ export class SubscriptionPlansService {
       },
     });
 
-    this.logger.log(`Subscription created successfully: ${subscription.subscriptionId}`);
+    this.logger.log(
+      `Subscription created successfully: ${subscription.subscriptionId}`,
+    );
 
     return subscription;
   }
@@ -620,7 +679,9 @@ export class SubscriptionPlansService {
       throw new NotFoundException('No active subscription found for this user');
     }
 
-    this.logger.log(`Active subscription found: ${subscription.subscriptionId}`);
+    this.logger.log(
+      `Active subscription found: ${subscription.subscriptionId}`,
+    );
 
     return subscription;
   }

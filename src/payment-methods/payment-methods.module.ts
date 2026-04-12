@@ -4,6 +4,6 @@ import { PaymentMethodsController } from './payment-methods.controller';
 
 @Module({
   providers: [PaymentMethodsService],
-  controllers: [PaymentMethodsController]
+  controllers: [PaymentMethodsController],
 })
 export class PaymentMethodsModule {}

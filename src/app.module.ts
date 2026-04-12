@@ -17,6 +17,23 @@ import { SocialInfoModule } from './social-info/social-info.module';
 import { AppleIapModule } from './apple-iap/apple-iap.module';
 
 @Module({
-  imports: [PrismaModule, ConfigModule.forRoot({isGlobal: true}), AuthModule, UsersModule, PaymentMethodsModule, SubscriptionPlansModule, BillModule, MailModule, StripeKeyModule, BillTrackingModule, PayPalModule, FirebaseModule, NotificationModule, PaymentModule, SocialInfoModule, AppleIapModule],
+  imports: [
+    PrismaModule,
+    ConfigModule.forRoot({ isGlobal: true }),
+    AuthModule,
+    UsersModule,
+    PaymentMethodsModule,
+    SubscriptionPlansModule,
+    BillModule,
+    MailModule,
+    StripeKeyModule,
+    BillTrackingModule,
+    PayPalModule,
+    FirebaseModule,
+    NotificationModule,
+    PaymentModule,
+    SocialInfoModule,
+    AppleIapModule,
+  ],
 })
 export class AppModule {}

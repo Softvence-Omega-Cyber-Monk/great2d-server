@@ -1,4 +1,9 @@
-import { PipeTransform, Injectable, ArgumentMetadata, BadRequestException } from '@nestjs/common';
+import {
+  PipeTransform,
+  Injectable,
+  ArgumentMetadata,
+  BadRequestException,
+} from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
@@ -12,9 +17,13 @@ export class ParseFormDataPipe implements PipeTransform {
     // Convert string booleans to actual booleans
     const transformed = { ...value };
 
-    const booleanFields = ['isDarkMode', 'isNotificationsEnabled', 'isUsingBiometrics'];
+    const booleanFields = [
+      'isDarkMode',
+      'isNotificationsEnabled',
+      'isUsingBiometrics',
+    ];
 
-    booleanFields.forEach(field => {
+    booleanFields.forEach((field) => {
       if (transformed[field] !== undefined) {
         if (transformed[field] === 'true') {
           transformed[field] = true;
@@ -29,8 +38,8 @@ export class ParseFormDataPipe implements PipeTransform {
     const errors = await validate(object);
 
     if (errors.length > 0) {
-      const messages = errors.map(error => 
-        Object.values(error.constraints || {}).join(', ')
+      const messages = errors.map((error) =>
+        Object.values(error.constraints || {}).join(', '),
       );
       throw new BadRequestException(messages);
     }

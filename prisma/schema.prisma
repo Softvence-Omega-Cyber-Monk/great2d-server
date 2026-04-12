@@ -129,6 +129,7 @@ model SubscriptionPlan {
   duration           Int // Duration in months
   features           String[]
   appleProductId     String?  @unique // The unique product identifier defined in App Store Connect
+  applePricing       Float?   // Optional field for Apple pricing convention (e.g., 7.99, 11.99)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -141,7 +142,7 @@ model Subscription {
   userId                String
   subscriptionPlanId    String
   transactionId         String   @unique
-  originalTransactionId String?  @unique // Critical for tracking the lifecycle of an Apple subscription
+  originalTransactionId String?  // Critical for tracking the lifecycle of an Apple subscription chain
   platform              String   @default("stripe") // stripe, apple, paypal, etc.
   purchaseToken         String?  @db.Text // Stores JWS or receipt token for backup/verification
   environment           String?  // Sandbox or Production

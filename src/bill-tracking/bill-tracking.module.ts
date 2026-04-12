@@ -5,11 +5,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
-  imports: [
-    ScheduleModule.forRoot() 
-  ],
+  imports: [ScheduleModule.forRoot()],
   controllers: [BillTrackingController],
   providers: [BillTrackingService, PrismaService],
-  exports: [BillTrackingService]
+  exports: [BillTrackingService],
 })
 export class BillTrackingModule {}
